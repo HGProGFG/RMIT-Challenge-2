@@ -2,6 +2,10 @@
 
 ## Current state
 
+For the usable network-independent prototype, run `npm run demo` and follow the
+[local simulation guide](simulation.md). It simulates sign-in, roles, policy checks and two-of-three
+release without changing the live activation state described below.
+
 The application now installs the real SDK and wires a strict DPoP provider, login/logout,
 callback, browser encryption/decryption, governor policy signing, and pinned-key policy ingestion.
 The server JWT/DPoP verifier and atomic replay store remain in use. The production build and local
@@ -24,7 +28,7 @@ fails because the Tide public key is missing. These reads do not establish compl
 setup. See [the sanitized diagnostic](evidence/tide/bootstrap-2026-10-22.md).
 
 No human Tide identities are linked, IGA has not been enabled, and no signed M0 quorum, live
-ciphertext or two-person approval has been verified. The application deliberately remains
+ciphertext or two-person approval has been verified. The live integration deliberately remains
 unavailable for sealing until a genuine adapter and measured ciphertext limit are supplied.
 
 The integration uses these npm releases resolved on 22 October 2026:

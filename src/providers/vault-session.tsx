@@ -2,14 +2,14 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import type { Role, SessionResponse } from "../lib/contracts";
-import { api, safeError } from "../lib/client/api";
+import { api, ClientApiError, safeError } from "../lib/client/api";
 import { getBrowserTide, subscribeBrowserTide } from "../lib/tide/browser/adapter";
 import { hasVerifiedRole } from "../lib/roles";
 
-type Context = { session: SessionResponse | null; loading: boolean; error: string; notice: string; preview: boolean;
-  login: (role?: Role) => Promise<void>; logout: () => Promise<void>; refresh: () => Promise<void>; notify: (message: string) => void; };
+type Context = { session: SessionResponse | null; loading: boolean; error: string; notice: string; preview: boolean; simulation: boolean;
+  login: (role?: Role, participant?: string) => Promise<void>; logout: () => Promise<void>; refresh: () => Promise<void>; notify: (message: string) => void; };
 const SessionContext = createContext<Context | null>(null);
-export function VaultSessionProvider({ children }: { children: ReactNode }) {
+export function VaultSessionProvider({ children, simulation = false }: { children: ReactNode; simulation?: boolean }) {
   const [session, setSession] = useState<SessionResponse | null>(null), [loading, setLoading] = useState(false);
   const [error, setError] = useState(""), [notice, setNotice] = useState("");
   const path = usePathname(), epoch = useRef(0);
@@ -26,22 +26,22 @@ export function VaultSessionProvider({ children }: { children: ReactNode }) {
           ? `This session belongs to ${value.identity.alias}. Sign out to use the selected responsibility.` : "");
       }
     }
-    catch (e) { if (current === epoch.current) { setSession(null); clearSensitiveState(); setError(safeError(e)); } }
+    catch (e) { if (current === epoch.current) { setSession(null); clearSensitiveState(); setError(simulation && e instanceof ClientApiError && e.status === 401 ? "" : safeError(e)); } }
     finally { if (current === epoch.current) setLoading(false); }
   }
   useEffect(() => {
-    const invalidate = () => { ++epoch.current; setSession(null); setLoading(false); clearSensitiveState(); setError("Your session expired or could not be verified. Sign in again."); };
+    const invalidate = () => { ++epoch.current; setSession(null); setLoading(false); clearSensitiveState(); setError(simulation ? "" : "Your session expired or could not be verified. Sign in again."); };
     window.addEventListener("vault:session-invalidated", invalidate);
     const unsubscribe = subscribeBrowserTide(() => { ++epoch.current; setSession(null); clearSensitiveState(); void refresh(); });
     void refresh();
     return () => { ++epoch.current; unsubscribe(); window.removeEventListener("vault:session-invalidated", invalidate); };
   }, []);
   useEffect(() => { setNotice(""); }, [path]);
-  async function login(role?: Role) {
+  async function login(role?: Role, participant?: string) {
     setError("");
     if (!getBrowserTide().connected) { setError("Tide sign-in is not connected yet. Choosing a demo identity does not create a session or grant a role."); return; }
     const current = ++epoch.current; setLoading(true);
-    try { await getBrowserTide().login(role); if (current === epoch.current) await refresh(role); }
+    try { await getBrowserTide().login(role, participant); if (current === epoch.current) await refresh(role); }
     catch { if (current === epoch.current) { setSession(null); clearSensitiveState(); setError("Sign-in could not be verified. Please try again with the correct Tide account."); } }
     finally { if (current === epoch.current) setLoading(false); }
   }
@@ -50,7 +50,7 @@ export function VaultSessionProvider({ children }: { children: ReactNode }) {
     try { await getBrowserTide().logout(); }
     catch { setError("The local session was cleared. Complete sign-out in Tide before changing accounts."); }
   }
-  return <SessionContext.Provider value={{ session, loading, error, notice, preview: !session, login, logout, refresh: () => refresh(), notify: setNotice }}>
+  return <SessionContext.Provider value={{ session, loading, error, notice, simulation, preview: !session, login, logout, refresh: () => refresh(), notify: setNotice }}>
     {children}
   </SessionContext.Provider>;
 }

@@ -28,6 +28,7 @@ export type Exam = {
 };
 export type PolicyPurpose = "WRITE" | "READ";
 export type SignedPolicy = {
+  simulation?: true;
   id: string; examId: string; purpose: PolicyPurpose; signedBytesBase64: string;
   digest: string; contractId: "RelationshipAttestation:1";
   assignmentId: string; subjectType: "Role"; subjectId: "author" | "invigilator";
@@ -38,7 +39,7 @@ export type GovernanceRequestState = {
   authorizationCount: number | null; threshold: number | null; authorizers: string[] | null;
 };
 export type GovernanceObservation = {
-  changeRequestIds: string[]; requests: GovernanceRequestState[]; observedAt: string; source: "TIDE";
+  changeRequestIds: string[]; requests: GovernanceRequestState[]; observedAt: string; source: "TIDE" | "SIMULATION";
 };
 export type DecryptOutcome = DecryptResult;
 export type SignedPolicyRef = SignedPolicy & { policyId: string };
@@ -47,7 +48,7 @@ export type ExamSummary = Pick<Exam, "id" | "runId" | "title" | "authorAlias" | 
 export type GovernanceRequestView = { appRequestId: string; tideChangeRequestIds: string[]; targetSubject: string; requestedRoles: string[];
   status: GovernanceRequestState["status"]; authorizationCount?: number | null; threshold?: number | null; observedAt: string; requests: GovernanceRequestState[]; stale: boolean };
 export type ActivityEntry = { id: string; at: string; actorAlias: string; kind: string; outcome: string;
-  source: "APP_LOG" | "CLIENT_REPORTED" | "OBSERVED_FROM_TIDECLOAK"; code: string; correlationId: string; changeRequestId?: string };
+  source: "APP_LOG" | "CLIENT_REPORTED" | "OBSERVED_FROM_TIDECLOAK" | "SIMULATION"; code: string; correlationId: string; changeRequestId?: string };
 export const LIMITS = { MAX_PLAINTEXT_BYTES, MAX_TITLE: 120 } as const;
 // Ciphertext limit is runtime deployment configuration, never a guessed browser constant.
 export type VersionManifest = { applicationVersion: string; nodeVersion: string; sdkVersions: Record<string, string | null>;
@@ -57,7 +58,7 @@ export type DemoRun = { id: string; active: number; mode: "LIVE_MANUAL_RELEASE";
 export type SessionResponse = { identity: VerifiedIdentity;
   readiness: IntegrationReadiness & { authentication: Readiness; policy: Readiness; governance: Readiness };
   capabilities: { deny: Readiness }; activeRunId: string | null; versionManifest: VersionManifest; tideConsoleUrl?: string | null;
-  mode: "LIVE_MANUAL_RELEASE"; scheduleIsAdvisory: true };
+  mode: "LIVE_MANUAL_RELEASE" | "LOCAL_SIMULATION"; scheduleIsAdvisory: true };
 export const denyRequestSchema = z.object({ changeRequestId: z.string().min(1).max(256) }).strict();
 export const prepareSchema = z.object({ title: z.string().trim().min(1).max(120),
   advisoryReleaseAt: z.iso.datetime({ offset: true }) }).strict();

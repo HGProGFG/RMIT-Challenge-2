@@ -1,11 +1,12 @@
 import type { DecryptResult, Role, SignedPolicy } from "../../contracts";
 
 /** Application boundary for Dinh's reviewed Tide SDK integration, not Tide SDK exports.
- * Only the real SDK may authenticate, produce ciphertext or return opened plaintext.
+ * The live implementation uses only the real SDK. The explicitly selected local demo
+ * installs a separate, labeled simulator; it supplies no Tide credentials or evidence.
  */
 export interface BrowserTideAdapter {
   connected: boolean;
-  login(roleHint?: Role): Promise<void>;
+  login(roleHint?: Role, participant?: string): Promise<void>;
   logout(): Promise<void>;
   secureFetch(input: string, init?: RequestInit): Promise<Response>;
   encrypt(input: { examId: string; plaintext: string; policy: SignedPolicy }): Promise<string>;

@@ -20,11 +20,11 @@ Exam authors, invigilators and institutions benefit from narrower access. An ope
 
 ### 4. Why TideCloak matters
 
-The target is genuine browser encryption and network-enforced decryption, with a verified two-of-three governed role grant. The build includes the backend, seven-screen interface, real Tide SDK provider, browser policy crypto and governor policy signing. Realm setup and live cross-identity/quorum validation remain incomplete.
+Tide's MCP maps this to RelationshipAttestation:1: a separate author write policy and named invigilator read policy, with governed release. The live SDK, token/DPoP verification and policy adapters are implemented. While realm initialization is blocked, an explicit local simulator demonstrates sign-in, fixed roles, record access and two-of-three approval.
 
 ### 5. Prototype & storytelling
 
-The interface demonstrates the intended upload, storage inspection, administrator attack, approval and opening journey. Unconnected screens are explicitly labeled preview and do not fake security outcomes. Release is manual; the schedule is advisory. Activity logs are mutable observations, not immutable audit evidence.
+Seal a synthetic paper, try opening as a teacher or administrator, approve release as two different governors, then open as the invigilator. The simulator labels every screen and event. Browser AES-GCM uses demo keys held by the local server; it provides no Tide distributed-security guarantee. Release is manual, the schedule advisory and logs editable.
 
 ## Setup
 
@@ -32,10 +32,12 @@ Use Node.js 24 and npm:
 
 ```sh
 npm ci
-npm run dev
+npm run demo
 ```
 
-Open http://localhost:3000. No account is needed to explore the labeled workspace preview. Protected operations require a real Tide integration.
+Open [localhost:3000](http://localhost:3000). Use the **Local simulation controls** to switch among seven synthetic identities. No Tide account, license key or active realm is needed for this mode. The server binds to loopback and stores demo state separately in `data/simulation.sqlite`.
+
+Follow the [simulation guide and Tide integration plan](docs/simulation.md) for the complete demo. To use the live integration, configure `.env.local`, leave `TIDE_SIMULATION=false`, and run `npm run dev`. Live operations remain blocked until the realm and its acceptance checks are ready.
 
 - [Backend setup and authentication boundary](docs/backend-setup.md)
 - [Frontend setup and browser adapter handoff](docs/frontend-setup.md)
@@ -56,4 +58,4 @@ npm run build
 npm run verify:dpop
 ```
 
-The inherited generated-key tests establish application behavior, not live Tide enforcement. Real negative decryption and quorum evidence must be recorded before describing this as a completed Tide-integrated challenge entry.
+Tests cover both the isolated simulator and the real integration's fail-closed application boundaries. Simulator results are not live Tide evidence. The challenge's network-load fallback permits simulated submissions; disclose the mode and remaining live validation explicitly.

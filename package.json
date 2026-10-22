@@ -7,6 +7,7 @@
     "node": ">=24.0.0 <25"
   },
   "scripts": {
+    "demo": "node scripts/local-demo.mjs",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",

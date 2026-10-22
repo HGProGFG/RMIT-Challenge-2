@@ -7,11 +7,11 @@ import { hasVerifiedRole } from "../lib/roles";
 import { useVaultSession } from "../providers/vault-session";
 
 export function PolicyProvisioner() {
-  const { session } = useVaultSession();
+  const { session, simulation } = useVaultSession();
   const [exams, setExams] = useState<Exam[]>([]), [selected, setSelected] = useState("");
   const [busy, setBusy] = useState(false), [message, setMessage] = useState("");
   const epoch = useRef(0);
-  const governor = !!session && hasVerifiedRole(session.identity, "tide-realm-admin");
+  const governor = !simulation && !!session && hasVerifiedRole(session.identity, "tide-realm-admin");
   useEffect(() => {
     const current = ++epoch.current; setExams([]); setMessage(""); setBusy(false);
     if (governor) api<{ exams: Exam[] }>("/api/exams").then(data => {

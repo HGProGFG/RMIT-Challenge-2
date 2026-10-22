@@ -1,9 +1,12 @@
 import { handleApi } from "@/lib/server/api";
+import { simulationEnabled } from "@/lib/simulation/mode";
+import { handleSimulationApi } from "@/lib/simulation/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const GET = handleApi;
-export const POST = handleApi;
-export const PUT = handleApi;
-export const DELETE = handleApi;
-export const PATCH = handleApi;
-export const OPTIONS = handleApi;
+const dispatch = (req: Request) => simulationEnabled() ? handleSimulationApi(req) : handleApi(req);
+export const GET = dispatch;
+export const POST = dispatch;
+export const PUT = dispatch;
+export const DELETE = dispatch;
+export const PATCH = dispatch;
+export const OPTIONS = dispatch;

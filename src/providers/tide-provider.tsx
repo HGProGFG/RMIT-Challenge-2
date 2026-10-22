@@ -4,6 +4,7 @@ import { TideCloakProvider, useTideCloak } from "@tidecloak/nextjs";
 import type { PublicTideConfig } from "../lib/server/config";
 import { configureBrowserTide, disconnectBrowserTide } from "../lib/tide/browser/adapter";
 import { createSdkAdapter } from "../lib/tide/browser/sdk-adapter";
+import { createSimulationAdapter } from "../lib/simulation/browser";
 
 function Bridge({ config, children }: { config: PublicTideConfig; children: ReactNode }) {
   const tide = useTideCloak();
@@ -15,10 +16,11 @@ function Bridge({ config, children }: { config: PublicTideConfig; children: Reac
   }, [config, tide.isInitializing, tide.initError, tide.authenticated, tide.token]);
   return children;
 }
-export function TideProvider({ config, children }: { config: PublicTideConfig | null; children: ReactNode }) {
+export function TideProvider({ config, simulation = false, children }: { config: PublicTideConfig | null; simulation?: boolean; children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); return disconnectBrowserTide; }, []);
+  useEffect(() => { if (simulation) { configureBrowserTide(createSimulationAdapter()); return disconnectBrowserTide; } }, [simulation]);
   const sdkConfig = useMemo(() => config ? { ...config, useDPoP: { mode: "strict", alg: "ES256" } } : null, [config]);
-  if (!mounted || !sdkConfig || !config) return children;
+  if (simulation || !mounted || !sdkConfig || !config) return children;
   return <TideCloakProvider config={sdkConfig}><Bridge config={config}>{children}</Bridge></TideCloakProvider>;
 }
