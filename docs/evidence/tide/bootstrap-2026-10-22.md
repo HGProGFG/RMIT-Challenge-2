@@ -20,8 +20,9 @@ real login, enrollment, policy encryption and quorum acceptance remain unverifie
 
 ## Activation observations
 
-Times below are UTC on 22 October 2026. Endpoint names are relative to
-`/admin/realms/sealed-exam-vault/`.
+Times are the host's UTC log labels on 22 October 2026. **Before clock correction at approximately
+07:50 actual UTC, those labels were about 61 minutes behind real time.** Post-correction timestamps
+agree with Tide. Endpoint names are relative to `/admin/realms/sealed-exam-vault/`.
 
 | Observation | Result |
 |---|---|
@@ -33,12 +34,23 @@ Times below are UTC on 22 October 2026. Endpoint names are relative to
 | 06:33, `GET vendorResources/isPendingLicenseActive` | HTTP 200, `true` |
 | 06:33, `GET vendorResources/getLicenseDetails` | HTTP 200, returns usage/expiry fields |
 | 06:33, `GET vendorResources/get-installations-provider` for the actual client | HTTP 500; no adapter saved |
+| Approximately 07:50 actual UTC, Windows/Docker clock verification | About 3,684 seconds of skew corrected; later comparison within one second |
+| 07:53:39 actual UTC, one bounded normal finalization after clock correction | Wallet-state check passed; `Midgard.FinalizeWallet` failed with upstream HTTP 500 and `Not enough orks returned an ok response` |
+| 07:56–07:57 actual UTC, separate `sealed-exam-vault-recovery` realm initialized with aligned clocks | Normal free-tier setup returned HTTP 500 with the same finalization failure; original realm preserved |
 
 The setup response says the vendor key was created but the licence could not be set up.
 An active pending subscription and returned licence details are partial observations, not proof
 that wallet finalization, IdP signing or usable app configuration succeeded. The earlier upstream
-503 may have been transient; the latest adapter export still fails. The precise upstream cause
-requires Tide's investigation.
+503 may have been transient. Clock correction moved the original setup past wallet-state
+validation, but successful cryptographic finalization still has not occurred. The clean-realm
+reproduction reduces the likelihood that only stale original realm state caused the remaining
+failure. A liveness probe returned HTTP 200 from 25 of 25 ORKs; this does not prove the finalization
+operation works. The exact upstream cause remains unconfirmed.
+
+Adapter export now has a concrete local symptom: `KeyWrapper.getPublicKey()` is null, leading to
+a `NullPointerException` while encoding the installation configuration. No substitute signing
+key or adapter was created. The original application realm remains selected; the recovery realm
+is only diagnostic and is not used by the application.
 
 The free-tier flow uses the owner's email and automatic activation. It does not request a
 manually entered challenge licence key. This agrees with the
@@ -53,7 +65,9 @@ No forced key generation, rotation, switch, licence bypass, paid checkout or fab
 was used. Credentials, owner email, customer/subscription IDs, key material and raw logs remain
 private. No enrollment invites have been created.
 
-Ask Tide support to inspect why free-tier wallet/vendor finalization returns `UNDETERMINED`
-and how to resume this existing realm safely. After genuine activation succeeds, resume the
+Ask Tide support to inspect the corrected-clock `Midgard.FinalizeWallet` failures at **07:53:39 UTC**
+and **07:57:15 UTC**, including the native library's ORK HTTP 500 responses, and how to resume the
+existing pending vendor safely. The earlier `UNDETERMINED` failure occurred while the host clock
+was skewed. After genuine activation succeeds, resume the
 remaining steps in [Tide setup](../../tide-setup.md), including human enrollment and signed 2-of-3
 governance. This report is prepared for review; it has not been sent to anyone.

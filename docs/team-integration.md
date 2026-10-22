@@ -36,9 +36,11 @@ has 68 local regression checks, typecheck, production build and HTTP smoke check
 [Tide setup](tide-setup.md) and [live evidence status](evidence/tide/status.json).
 
 Docker's Linux engine is now running with WSL 3.0.3. The dedicated realm, application client and
-seven synthetic account slots exist. Tide's automatic free-tier activation and one finalization
-attempt returned HTTP 500 with wallet status `UNDETERMINED`. A pending subscription is reported
-active, but genuine adapter export still fails. Human enrollment, IGA enablement, envelope
+seven synthetic account slots exist. A 61-minute host/Docker clock skew was corrected. A normal
+resume now passes wallet-state lookup but fails during `Midgard.FinalizeWallet` with upstream
+HTTP 500 and insufficient successful ORK responses. A separate clean recovery realm reproduced
+this with aligned clocks; the original realm and app configuration are preserved. A pending
+subscription is reported active, but genuine adapter export still fails. Human enrollment, IGA enablement, envelope
 measurement and the A1–A15 security demonstration remain outstanding. Tide doctor still fails
 its missing-adapter check; the real adapter must come from the successfully bootstrapped realm.
 This integration does not claim completed live security checks. Review the combined PR before

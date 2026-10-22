@@ -12,11 +12,16 @@ Docker's Linux engine is running with WSL 3.0.3. The dedicated `sealed-exam-vaul
 confirmed that the selected ORK network has `RelationshipAttestation:1`. The owner's licence email,
 explicit Terms acceptance and bootstrap credentials stay in ignored local files.
 
-**Tide activation remains incomplete.** The normal free-tier setup and one bounded finalization
-attempt returned HTTP 500, `TIDE-IDPEXT-VENDOR-KEYGEN_FAILED`, with wallet status `UNDETERMINED`.
-An earlier Midgard licence lookup returned upstream HTTP 503. A later read returned licence details
-and `isPendingLicenseActive=true`, but the actual adapter export still returned HTTP 500. Those
-reads do not establish completed vendor-key setup. See [the sanitized diagnostic](evidence/tide/bootstrap-2026-10-22.md).
+**Tide activation remains incomplete.** Initial activation returned HTTP 500,
+`TIDE-IDPEXT-VENDOR-KEYGEN_FAILED`, with wallet status `UNDETERMINED`. A local clock skew of about
+61 minutes was found and corrected. A bounded resume then passed the wallet-state check but failed
+inside `Midgard.FinalizeWallet`: `Not enough orks returned an ok response`, with upstream HTTP 500.
+A separate clean recovery realm, created after the correction, reproduced that finalization
+failure. The original realm is preserved and remains the application's configured realm.
+
+Licence details and `isPendingLicenseActive=true` are returned, but actual adapter export still
+fails because the Tide public key is missing. These reads do not establish completed vendor-key
+setup. See [the sanitized diagnostic](evidence/tide/bootstrap-2026-10-22.md).
 
 No human Tide identities are linked, IGA has not been enabled, and no signed M0 quorum, live
 ciphertext or two-person approval has been verified. The application deliberately remains
@@ -40,6 +45,10 @@ the installed JS SDK has the same SHA-256 as the copied pack relay:
 ## Start local infrastructure on Windows
 
 1. Install Docker Desktop and start its Linux container engine. Run `npm run tide:check`.
+   It compares the host and Docker engine clocks with independent HTTPS time sources and stops
+   on a measured skew over 30 seconds. It changes no clocks. If network checks are unavailable,
+   it warns; verify time before activation. A healthy `/active` response alone does not prove
+   Tide wallet finalization is available.
 2. Keep `.env.tide-bootstrap` separate from the application's `.env.local`. For another deployment,
    a human must supply `TIDE_LICENSE_EMAIL`, `TIDE_TERMS_ACCEPTED=yes` only after agreeing at
    <https://tide.org/legal>, and `TIDE_HOSTING=docker`. There is no default email or consent.

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "status": "not_ready",
-  "observedAt": "2026-10-22T06:33:55Z",
+  "observedAt": "2026-10-22T07:57:51Z",
   "environment": "local Docker realm created; Tide activation incomplete",
   "liveRealm": true,
   "realmReady": false,
@@ -16,7 +16,18 @@
   "licenseSetupHttpStatus": 500,
   "licenseRecoveryHttpStatus": 500,
   "licenseErrorCode": "TIDE-IDPEXT-VENDOR-KEYGEN_FAILED",
-  "lastFinalizationWalletStatus": "UNDETERMINED",
+  "beforeClockCorrectionWalletStatus": "UNDETERMINED",
+  "clockAligned": true,
+  "clockOffsetMsAtRecovery": 421,
+  "postClockCorrectionHttpStatus": 500,
+  "postClockCorrectionError": "Midgard.FinalizeWallet: Not enough orks returned an ok response",
+  "cleanRealmReproduction": {
+    "realm": "sealed-exam-vault-recovery",
+    "createdWithAlignedClock": true,
+    "httpStatus": 500,
+    "error": "Midgard.FinalizeWallet: Not enough orks returned an ok response",
+    "usedByApplication": false
+  },
   "pendingLicenseActive": true,
   "licenseDetailsReturned": true,
   "adapterExportHttpStatus": 500,
@@ -29,7 +40,7 @@
   "crossIdentityRoundTrip": "not_run",
   "A1_A15": "not_run",
   "blockers": [
-    "Tide vendor-key and wallet finalization failed; pending subscription is not completed bootstrap",
+    "Tide ORK wallet finalization returns HTTP 500 with aligned clocks, including on a fresh recovery realm",
     "Resolve activation with Tide, then enable IGA and complete human enrollment",
     "Inspect signed M0, configure and prove 2-of-3 governance",
     "Export public adapter; measure ciphertext envelope and run live acceptance"
