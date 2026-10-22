@@ -12,8 +12,9 @@ $taskDockerPath = if ($taskDocker.Source) { $taskDocker.Source } else { $taskDoc
 $taskDockerOs = & $taskDockerPath info --format '{{.OSType}}'
 if ($LASTEXITCODE -ne 0 -or $taskDockerOs -ne 'linux') { throw 'Docker is installed but its Linux engine is unavailable.' }
 & node (Join-Path $PSScriptRoot 'tide-clock-check.mjs') $taskDockerPath
+if ($LASTEXITCODE -eq 2) { throw 'Clock verification unavailable. Check HTTPS time sources and Docker; no Tide activation was attempted.' }
 if ($LASTEXITCODE -ne 0) { throw 'Clock preflight failed. Synchronize the Windows and Docker clocks before Tide setup.' }
-if ($CheckOnly) { Write-Output 'Docker engine available; clock preflight complete. This check created no container or realm.'; exit 0 }
+if ($CheckOnly) { Write-Output 'Docker engine and clocks verified. This is not a Tide activation check; no container or realm was created.'; exit 0 }
 
 # Bootstrap-only file. Never loaded by Next.js or committed. No password on the command line.
 $taskEnvPath = Join-Path $taskRoot '.env.tide-bootstrap'
