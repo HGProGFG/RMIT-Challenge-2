@@ -1,0 +1,25 @@
+# Team integration handoff
+
+Hoang's foundation lives on `feat/hoang-api`. Bao owns application screens and README; Dinh owns live Tide setup and browser/server Tide adapters. Root dependency/lockfile changes and shared contracts should go through the backend integration PR to reduce conflicts.
+
+## Bao
+
+Base UI work on the backend scaffold; replace the temporary `src/app/page.tsx` and layout. Use `src/lib/contracts.ts` and `docs/api-contract.md`. Keep `.txt` reading, byte count, encryption, plaintext rendering and cleanup browser-only. The API always uses `{data,...}` or `{error:...}`. Do not add route-local copies of the server verifier.
+
+The upload sequence is prepare → wait for WRITE and READ policies → browser encrypt → seal → read back stored ciphertext. Opening is browser SDK decryption, never an API plaintext response. The admin display-role attack is available with `npm run dev` and `DEMO_ATTACKS_ENABLED=true`; it is absent in production. Each profile must actually sign in.
+
+## Dinh
+
+Supply `src/lib/tide/server/**` exports for the application port in `src/lib/server/tide-integration.ts`. Keep the existing JWT/DPoP route protection connected to SQLite; review real claim format/roles and update the boundary if the chosen realm differs. Supply browser provider/session/secureFetch and shared policy encrypt/decrypt to Bao. Confirm envelope overhead before setting MAX_CIPHERTEXT_BYTES.
+
+Policy verification must authenticate and parse exact signed bytes. Proposal/read integration must return actual IDs, separate per-request counts and statuses, fixed allowlisted targets and authoritative committed state. The local implementation cannot prove an active 2-of-3 Tide policy. Approval happens in each governor's session or supported console; the backend never approves as a service account. Keep readiness unavailable until verified.
+
+## Merge procedure
+
+1. Bring the backend PR into main, then rebase/merge the UI and Tide branches onto it. Resolve `contracts.ts`, package and config changes once on the integration branch.
+2. Review Bao's pages and Dinh's adapters in their own PRs. Preserve file ownership and replace only the temporary scaffold shell. Never merge unreviewed fixture auth into runtime.
+3. Run tests, typecheck, production build and Tide doctor against the combined checkout and running server. Compare the byte-exact DPoP relay and served headers.
+4. Run real author → seal → teacher/admin negative calls → one-vote pending/under-threshold denial → second distinct approval/commit → fresh invigilator opening. Record sanitized IDs and results. Local unit fixtures cannot satisfy this step.
+5. Bao finishes the README/video only after observed behavior and limits are known.
+
+At backend handoff no Bao/Dinh feature branch or PR was available remotely. The backend interfaces are prepared; full application integration remains dependent on those branches. This document does not claim the team has agreed to interface details or completed live security checks.
