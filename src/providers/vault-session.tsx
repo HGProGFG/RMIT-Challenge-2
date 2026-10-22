@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import type { Role, SessionResponse } from "../lib/contracts";
 import { api, safeError } from "../lib/client/api";
 import { getBrowserTide, subscribeBrowserTide } from "../lib/tide/browser/adapter";
+import { hasVerifiedRole } from "../lib/roles";
 
 type Context = { session: SessionResponse | null; loading: boolean; error: string; notice: string; preview: boolean;
   login: (role?: Role) => Promise<void>; logout: () => Promise<void>; refresh: () => Promise<void>; notify: (message: string) => void; };
@@ -21,7 +22,7 @@ export function VaultSessionProvider({ children }: { children: ReactNode }) {
       const value = await api<SessionResponse>("/api/session");
       if (current === epoch.current) {
         setSession(value);
-        setError(roleHint && !value.identity.realmRoles.includes(roleHint)
+        setError(roleHint && !hasVerifiedRole(value.identity, roleHint)
           ? `This session belongs to ${value.identity.alias}. Sign out to use the selected responsibility.` : "");
       }
     }

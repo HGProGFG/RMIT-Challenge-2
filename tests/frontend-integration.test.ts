@@ -27,7 +27,7 @@ const input = { title: "Frontend integration fixture", advisoryReleaseAt: "2026-
 test("browser transport reads the full latest session contract and missing Tide dependencies", async () => {
   const session = await api<SessionResponse>("/api/session");
   assert.equal(session.identity.subject, "author"); assert.deepEqual(session.identity.realmRoles, ["author"]);
-  assert.equal(session.readiness.tide, "not_ready"); assert.ok(session.readiness.missing.includes("tide_sdk"));
+  assert.equal(session.readiness.tide, "not_ready"); assert.ok(session.readiness.missing.includes("browser_provider"));
   assert.ok(session.activeRunId); assert.equal(session.capabilities.deny, "not_ready");
 });
 test("upload can resume a prepared paper instead of creating a second exam in the active run", async () => {

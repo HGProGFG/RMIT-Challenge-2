@@ -5,10 +5,11 @@ import { claimRate } from "../db";
 import { actorBucket, authenticate } from "./auth";
 import { appOrigin } from "./config";
 import { AppError } from "./errors";
+import { hasVerifiedRole } from "../roles";
 
 export type ApiContext = { actor: VerifiedIdentity; correlationId: string };
 export function requireRoles(actor: VerifiedIdentity, roles: Role[]) {
-  if (!roles.some(role => actor.realmRoles.includes(role))) throw new AppError(403, "FORBIDDEN", "This verified realm role cannot perform the operation.");
+  if (!roles.some(role => hasVerifiedRole(actor, role))) throw new AppError(403, "FORBIDDEN", "This verified role cannot perform the operation.");
 }
 export function idempotencyKey(req: Request) {
   const key = req.headers.get("idempotency-key") ?? "";

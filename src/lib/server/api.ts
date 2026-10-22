@@ -3,13 +3,14 @@ import { accessRequestSchema, clientObservationSchema, denyRequestSchema, displa
   prepareSchema, sealSchema, type GovernanceObservation } from "../contracts";
 import { db } from "../db";
 import * as repo from "../db/repository";
-import { ciphertextLimit, tideConfig } from "./config";
+import { ciphertextLimit, tideConfig, tideConsoleUrl } from "./config";
 import { getActiveRun, requireActiveRun } from "../db/runs";
 import { AppError, notReady } from "./errors";
 import { decodeBase64, idempotencyKey, json, pagination, protectedRoute, readBody, requireRoles } from "./http";
 import { tideIntegration } from "./tide-integration";
 import { getIntegrationReadiness, getVersionManifest } from "./readiness";
 import { governanceRequestView, toActivityEntry, toExamSummary } from "./views";
+import { hasVerifiedRole } from "../roles";
 
 const uuid = (id: string) => {
   if (!z.uuid().safeParse(id).success) throw new AppError(422, "INVALID_ID", "A valid UUID is required.");
@@ -47,7 +48,7 @@ export function handleApi(req: Request) {
     const url = new URL(req.url), path = url.pathname.replace(/\/$/, ""), method = req.method;
     if (method === "GET" && path === "/api/session") return json({ identity: actor,
       readiness: { authentication: "ready", policy: tideIntegration.policyReadiness, governance: tideIntegration.governanceReadiness, ...getIntegrationReadiness() },
-      capabilities: { deny: tideIntegration.denyReadiness },
+      capabilities: { deny: tideIntegration.denyReadiness }, tideConsoleUrl: tideConsoleUrl(),
       versionManifest: getVersionManifest(), activeRunId: getActiveRun()?.id ?? null,
       mode: "LIVE_MANUAL_RELEASE", scheduleIsAdvisory: true }, correlationId);
     const run = requireActiveRun(actor.issuer), config = tideConfig();
@@ -109,7 +110,7 @@ export function handleApi(req: Request) {
         const target = input.kind === "SELF_ACCESS" ? { issuer: actor.issuer, subject: actor.subject }
           : { issuer: process.env.INVIGILATOR_ISSUER ?? "", subject: process.env.INVIGILATOR_SUBJECT ?? "" };
         if (!target.issuer || !target.subject || target.issuer !== actor.issuer) notReady("A fixed same-realm invigilator must be configured.");
-        if (input.kind === "INVIGILATOR_RELEASE" && !actor.realmRoles.includes("tide-realm-admin") &&
+        if (input.kind === "INVIGILATOR_RELEASE" && !hasVerifiedRole(actor, "tide-realm-admin") &&
             (actor.subject !== target.subject || actor.issuer !== target.issuer)) throw new AppError(403, "NOT_DESIGNATED_RECIPIENT", "Only the designated invigilator or governance can request release.");
         if (tideIntegration.governanceReadiness !== "ready") notReady("Tide proposal bridge is unavailable. No pending CR was created.");
         const prior = repo.reserveProposal(actor, id, input.kind, key);

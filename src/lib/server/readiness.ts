@@ -11,7 +11,7 @@ export function getVersionManifest(): VersionManifest {
   let applicationVersion = "unknown", packages: Record<string, { version?: unknown }> = {};
   try { applicationVersion = JSON.parse(readFileSync(resolve("package.json"), "utf8")).version; } catch { /* unavailable evidence */ }
   try { packages = JSON.parse(readFileSync(resolve("package-lock.json"), "utf8")).packages; } catch { /* unavailable evidence */ }
-  const names = ["next", "jose", "@tidecloak/nextjs", "@tidecloak/js", "@tidecloak/react"];
+  const names = ["next", "jose", "@tidecloak/nextjs", "@tidecloak/js", "@tidecloak/react", "@tideorg/js", "heimdall-tide"];
   const sdkVersions = Object.fromEntries(names.map(name => {
     const version = packages?.[`node_modules/${name}`]?.version;
     return [name, typeof version === "string" && /^[0-9][A-Za-z0-9.+-]{0,79}$/.test(version) ? version : null];

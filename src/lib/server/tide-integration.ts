@@ -1,7 +1,10 @@
 import type { GovernanceObservation, Identity, PolicyPurpose, Readiness, SignedPolicy } from "../contracts";
 import { notReady } from "./errors";
+import { publicTideConfig } from "./config";
+import { verifyExamPolicy } from "../tide/server/policy";
+import { governanceConfigured, observeRequests, proposeAccess } from "../tide/server/governance";
 
-/** Application port, NOT Tide SDK exports. Dinh wires reviewed browser/server integration here.
+/** Application port, NOT Tide SDK exports. Deployment readiness is separate from live acceptance.
  * No runtime signing, decrypt-capable credential, human approval proxy or invented vote counts.
  */
 export interface TideIntegration {
@@ -14,13 +17,17 @@ export interface TideIntegration {
   observeRequests(ids: string[]): Promise<GovernanceObservation>;
   denyChangeRequest(input: { actor: Identity; changeRequestId: string; expectedStatus: "PENDING" }): Promise<void>;
 }
+const overrides: Partial<Record<"browserReadiness" | "policyReadiness" | "governanceReadiness", Readiness>> = {};
 export const tideIntegration: TideIntegration = {
-  browserReadiness: "not_ready",
-  policyReadiness: "not_ready",
-  governanceReadiness: "not_ready",
+  get browserReadiness() { return overrides.browserReadiness ?? (publicTideConfig() ? "ready" : "not_ready"); },
+  set browserReadiness(value) { overrides.browserReadiness = value; },
+  get policyReadiness() { return overrides.policyReadiness ?? (publicTideConfig() ? "ready" : "not_ready"); },
+  set policyReadiness(value) { overrides.policyReadiness = value; },
+  get governanceReadiness() { return overrides.governanceReadiness ?? (governanceConfigured() ? "ready" : "not_ready"); },
+  set governanceReadiness(value) { overrides.governanceReadiness = value; },
   denyReadiness: "not_ready",
-  async verifyPolicy() { return notReady("Signed-policy verification has not been connected by Dinh."); },
-  async proposeAccess() { return notReady("Tide proposal integration is unavailable. No pending request has been created."); },
-  async observeRequests() { return notReady("Live Tide governance observations are unavailable."); },
+  verifyPolicy: verifyExamPolicy,
+  proposeAccess,
+  observeRequests,
   async denyChangeRequest() { return notReady("A reviewed governor denial flow is not connected. Use the supported Tide console."); }
 };

@@ -5,6 +5,7 @@ import { claimProof } from "../db";
 import { appOrigin, tideConfig } from "./config";
 import { AppError } from "./errors";
 import { verifyDpop } from "./vendor/verifyDpop";
+import { hasVerifiedRole } from "../roles";
 
 const DPOP_WINDOW = 120;
 export async function authenticate(req: Request): Promise<VerifiedIdentity> {
@@ -52,17 +53,21 @@ export async function authenticate(req: Request): Promise<VerifiedIdentity> {
   const realmRoles = (claims.realm_access as { roles?: unknown } | undefined)?.roles;
   const client = process.env.TIDECLOAK_ROLE_CLIENT;
   const clientRoles = client ? (claims.resource_access as Record<string, { roles?: unknown }> | undefined)?.[client]?.roles : [];
+  const governanceRoles = (claims.resource_access as Record<string, { roles?: unknown }> | undefined)?.["realm-management"]?.roles;
   const roles = [...new Set([...(Array.isArray(realmRoles) ? realmRoles : []), ...(Array.isArray(clientRoles) ? clientRoles : [])])]
     .flatMap(role => { const parsed = roleSchema.safeParse(role); return parsed.success ? [parsed.data] : []; });
+  const governance = Array.isArray(governanceRoles) && governanceRoles.includes("tide-realm-admin");
+  if (governance && !roles.includes("tide-realm-admin")) roles.push("tide-realm-admin");
   if (!roles.length) throw new AppError(403, "PARTICIPANT_REQUIRED", "This session is not an authorized demo participant.");
   return { issuer, subject: claims.sub!, roles,
     realmRoles: Array.isArray(realmRoles) ? realmRoles.filter((role): role is string => typeof role === "string") : [],
-    clientRoles: client && Array.isArray(clientRoles) ? { [client]: clientRoles.filter((role): role is string => typeof role === "string") } : {},
+    clientRoles: { ...(client && Array.isArray(clientRoles) ? { [client]: clientRoles.filter((role): role is string => typeof role === "string") } : {}),
+      ...(Array.isArray(governanceRoles) ? { "realm-management": governanceRoles.filter((role): role is string => typeof role === "string") } : {}) },
     alias: typeof claims.preferred_username === "string" ? claims.preferred_username.slice(0, 120) : "Authenticated participant" };
 }
 export async function verifyRequest(req: Request, opts: { requiredRoles?: Role[] } = {}) {
   const identity = await authenticate(req);
-  if (opts.requiredRoles && !opts.requiredRoles.some(role => identity.realmRoles.includes(role))) throw new AppError(403, "FORBIDDEN", "Required verified realm role is absent.");
+  if (opts.requiredRoles && !opts.requiredRoles.some(role => hasVerifiedRole(identity, role))) throw new AppError(403, "FORBIDDEN", "Required verified role is absent.");
   return identity;
 }
 export function actorBucket(actor: Identity) {

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "status": "not_ready",
+  "environment": "local code verification only",
+  "liveRealm": false,
+  "linkedDemoAccounts": 0,
+  "signedM0Threshold": null,
+  "governorCount": null,
+  "realChangeRequestIds": [],
+  "crossIdentityRoundTrip": "not_run",
+  "A1_A15": "not_run",
+  "blockers": [
+    "Docker CLI is installed but its Linux engine is unavailable; WSL is not installed",
+    "Confirm RelationshipAttestation:1 on the selected ORK network",
+    "License and bootstrap the dedicated realm; complete human enrollment",
+    "Inspect signed M0, configure and prove 2-of-3 governance",
+    "Export public adapter; measure ciphertext envelope and run live acceptance"
+  ],
+  "localTestsAreNotLiveTideEvidence": true
+}

@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24.0.0 <25" },
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
@@ -13,9 +15,17 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "run:create": "tsx scripts/reset-run.ts --create",
     "run:reset": "tsx scripts/reset-run.ts",
-    "verify:dpop": "tsx scripts/verify-dpop-asset.ts"
+    "verify:dpop": "tsx scripts/verify-dpop-asset.ts",
+    "tide:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tide-local.ps1 -CheckOnly",
+    "tide:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tide-local.ps1",
+    "tide:plan": "node scripts/tide-realm-plan.mjs"
   },
   "dependencies": {
+    "@tidecloak/js": "0.14.41",
+    "@tidecloak/nextjs": "0.14.40",
+    "@tidecloak/react": "0.14.33",
+    "@tideorg/js": "0.14.29",
+    "heimdall-tide": "0.14.41",
     "jose": "6.2.13",
     "next": "16.4.2",
     "react": "19.2.4",

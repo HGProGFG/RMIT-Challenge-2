@@ -3,6 +3,7 @@ import type { Exam, GovernanceObservation, Identity, PolicyPurpose, SignedPolicy
 import { AppError } from "../server/errors";
 import { db, transaction } from "./index";
 import { requireActiveRun } from "./runs";
+import { hasVerifiedRole } from "../roles";
 
 const examColumns = "id,runId,title,authorIssuer,authorSubject,authorAlias,advisoryReleaseAt,createdAt,sealedAt,contentType,state,ciphertextSha256,byteLength,version";
 export const digest = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
@@ -134,8 +135,8 @@ export type GovernanceLink = { id: string; examId: string; requesterIssuer: stri
   targetIssuer: string; targetSubject: string; requestedRoles: string; changeRequestIds: string; observation: string; createdAt: string };
 export function governanceLinks(actor: Identity) {
   const runId = requireActiveRun(actor.issuer).id;
-  const roles = "realmRoles" in actor ? (actor as VerifiedIdentity).realmRoles : actor.roles;
-  return (roles.includes("tide-realm-admin")
+  const governor = "realmRoles" in actor ? hasVerifiedRole(actor as VerifiedIdentity, "tide-realm-admin") : actor.roles.includes("tide-realm-admin");
+  return (governor
     ? db().prepare("SELECT * FROM GovernanceLink WHERE examId IN(SELECT id FROM Exam WHERE runId=?) ORDER BY createdAt DESC LIMIT 100").all(runId)
     : db().prepare("SELECT * FROM GovernanceLink WHERE examId IN(SELECT id FROM Exam WHERE runId=?) AND requesterIssuer=? AND requesterSubject=? ORDER BY createdAt DESC LIMIT 100").all(runId, actor.issuer, actor.subject)) as unknown as GovernanceLink[];
 }

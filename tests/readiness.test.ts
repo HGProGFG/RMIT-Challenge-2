@@ -9,12 +9,13 @@ after(f.cleanup);
 test("readiness lists concrete missing integrations and never treats installed backend as live Tide", () => {
   const readiness = getIntegrationReadiness();
   assert.equal(readiness.tide, "not_ready");
-  for (const name of ["tide_sdk", "browser_provider", "signed_policy_verifier", "governance_bridge"]) assert.ok(readiness.missing.includes(name));
+  for (const name of ["browser_provider", "signed_policy_verifier", "governance_bridge"]) assert.ok(readiness.missing.includes(name));
+  assert.equal(readiness.missing.includes("tide_sdk"), false);
 });
 test("version manifest reports actual relay digest, pinned-key fingerprint and unavailable SDK/image values", () => {
   const manifest = getVersionManifest();
   assert.equal(manifest.dpopAssetSha256, EXPECTED_DPOP_SHA256); assert.equal(manifest.dpopAssetMatches, true);
-  assert.match(manifest.pinnedKeyFingerprint!, /^[a-f0-9]{64}$/); assert.equal(manifest.sdkVersions["@tidecloak/js"], null);
+  assert.match(manifest.pinnedKeyFingerprint!, /^[a-f0-9]{64}$/); assert.equal(manifest.sdkVersions["@tidecloak/js"], "0.14.41");
   const prior = process.env.TIDECLOAK_REALM_IMAGE_DIGEST;
   try {
     process.env.TIDECLOAK_REALM_IMAGE_DIGEST = "DO_NOT_EXPOSE_ARBITRARY_ENV_VALUE";

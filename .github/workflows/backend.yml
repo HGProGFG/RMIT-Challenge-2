@@ -1,8 +1,8 @@
-name: Backend checks
+name: Integration checks
 on:
   pull_request:
   push:
-    branches: [main, feat/hoang-api]
+    branches: [main, feat/hoang-api, feat/hoang-bao-integration, feat/dinh-tide]
 permissions:
   contents: read
 jobs:

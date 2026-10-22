@@ -28,4 +28,15 @@ Set `browserReadiness` only after the actual provider is connected. The new `den
 
 Bao's `codex/sealed-vault-web` branch is now combined with the current backend on `feat/hoang-bao-integration`. Merge resolution retains the current backend and Bao's seven screens, updates shared session/role/readiness contracts, resumes existing prepared papers and connects pending-only rejection controls. Source work is preserved from PR #1 and PR #2. The combined revision has 59 local checks plus typecheck/build and browser preview verification.
 
-Dinh's real Tide implementation remains outstanding. This integration does not claim human agreement on all interface details or completed live security checks. Review the combined PR before bringing the team revision into main.
+Dinh's SDK implementation is now supplied on `feat/dinh-tide`: strict DPoP provider/callback,
+policy-bound browser crypto, governor enclave policy signing, bounded pinned-key policy verifier,
+and a gated proposal/read transport with console fallback. It recognizes the real
+`realm-management/tide-realm-admin` claim separately from raw realm roles. The combined revision
+has 68 local regression checks, typecheck, production build and HTTP smoke checks. See
+[Tide setup](tide-setup.md) and [live evidence status](evidence/tide/status.json).
+
+Live realm creation, human enrollment, envelope measurement and the A1–A15 security demonstration
+remain outstanding. Docker's Linux engine/WSL is unavailable on the current machine. Tide doctor
+still fails its missing-adapter check; the real adapter must come from the licensed realm.
+This integration does not claim completed live security checks. Review the combined PR before
+bringing the team revision into main.

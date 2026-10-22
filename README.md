@@ -20,7 +20,7 @@ Exam authors, invigilators and institutions benefit from narrower access. An ope
 
 ### 4. Why TideCloak matters
 
-The target is genuine browser encryption and network-enforced decryption, with a verified two-of-three governed role grant. The current build includes the backend and seven-screen interface; live Tide identity, policy verification, crypto and governance adapters still require integration and validation.
+The target is genuine browser encryption and network-enforced decryption, with a verified two-of-three governed role grant. The build includes the backend, seven-screen interface, real Tide SDK provider, browser policy crypto and governor policy signing. Realm setup and live cross-identity/quorum validation remain incomplete.
 
 ### 5. Prototype & storytelling
 
@@ -39,6 +39,7 @@ Open http://localhost:3000. No account is needed to explore the labeled workspac
 
 - [Backend setup and authentication boundary](docs/backend-setup.md)
 - [Frontend setup and browser adapter handoff](docs/frontend-setup.md)
+- [Tide setup, seven identities and live acceptance gates](docs/tide-setup.md)
 - [API contracts](docs/api-contract.md)
 - [Team integration](docs/team-integration.md)
 - [Backend validation boundaries](docs/evidence/backend-validation.md)
