@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto";
 import { calculateJwkThumbprint, createLocalJWKSet, decodeProtectedHeader, jwtVerify, type JWTPayload } from "jose";
-import { roleSchema, type Identity } from "../contracts";
+import { roleSchema, type Identity, type Role, type VerifiedIdentity } from "../contracts";
 import { claimProof } from "../db";
 import { appOrigin, tideConfig } from "./config";
 import { AppError } from "./errors";
 import { verifyDpop } from "./vendor/verifyDpop";
 
 const DPOP_WINDOW = 120;
-export async function authenticate(req: Request): Promise<Identity> {
+export async function authenticate(req: Request): Promise<VerifiedIdentity> {
   const auth = req.headers.get("authorization") ?? "";
   if (auth.length > 32768 || !/^DPoP [^\s]+$/i.test(auth)) throw new AppError(401, "INVALID_SESSION", "A DPoP-bound session is required.");
   const token = auth.slice(5);
@@ -56,7 +56,14 @@ export async function authenticate(req: Request): Promise<Identity> {
     .flatMap(role => { const parsed = roleSchema.safeParse(role); return parsed.success ? [parsed.data] : []; });
   if (!roles.length) throw new AppError(403, "PARTICIPANT_REQUIRED", "This session is not an authorized demo participant.");
   return { issuer, subject: claims.sub!, roles,
+    realmRoles: Array.isArray(realmRoles) ? realmRoles.filter((role): role is string => typeof role === "string") : [],
+    clientRoles: client && Array.isArray(clientRoles) ? { [client]: clientRoles.filter((role): role is string => typeof role === "string") } : {},
     alias: typeof claims.preferred_username === "string" ? claims.preferred_username.slice(0, 120) : "Authenticated participant" };
+}
+export async function verifyRequest(req: Request, opts: { requiredRoles?: Role[] } = {}) {
+  const identity = await authenticate(req);
+  if (opts.requiredRoles && !opts.requiredRoles.some(role => identity.realmRoles.includes(role))) throw new AppError(403, "FORBIDDEN", "Required verified realm role is absent.");
+  return identity;
 }
 export function actorBucket(actor: Identity) {
   return createHash("sha256").update(JSON.stringify([actor.issuer, actor.subject])).digest("hex");

@@ -6,21 +6,27 @@ Mutations require `Origin: APP_ORIGIN`, JSON and strict schema fields only. Prep
 
 | Method/path | Body/query | Data |
 | --- | --- | --- |
-| GET `/api/session` | — | `{identity:{issuer,subject,alias,roles},readiness:{authentication,policy,governance},mode,scheduleIsAdvisory}` |
-| POST `/api/exams/prepare` | `{title,advisoryReleaseAt}` | 201 `{exam,policyStatus:"not_ready"}`; author only. A fresh exam/run UUID, with policies prepared separately. |
-| GET `/api/exams` | `limit=1..100`, `offset=0..1000000` | `{exams,limit,offset,accessReleaseStatus:"unknown"}` |
-| GET `/api/exams/:id` | — | `{exam,accessReleaseStatus:"unknown",scheduleIsAdvisory:true}` |
+| GET `/api/session` | — | `{identity:{issuer,subject,alias,roles,realmRoles,clientRoles},readiness:{authentication,policy,governance,tide,missing},activeRunId,versionManifest,mode,scheduleIsAdvisory}` |
+| POST `/api/exams/prepare` | `{title,advisoryReleaseAt}` | 201 `{exam,examId,policyStatus}`; realm author only. Fresh exam UUID in the explicit active run; a second different exam returns 409. Policy status is ready only when both stored policies exist. |
+| GET `/api/exams` | `limit=1..100`, `offset=0..1000000` | `{exams,summaries,runId,limit,offset,accessReleaseStatus:"unknown"}`; active run only. |
+| GET `/api/exams/:id` | — | `{exam,summary,accessReleaseStatus:"unknown",scheduleIsAdvisory:true}`; active run only. |
 | POST `/api/exams/:id/policies` | `{purpose:"WRITE"\|"READ",signedBytesBase64}` | 201 `{policy}`; governor only; disabled until reviewed Tide signature verifier is ready. |
+| POST `/api/policies/ingest` | `{examId,purpose:"WRITE"\|"READ",signedBytesBase64}` | Equivalent ingestion alias from FUNCTION_PLAN; same active-run, governor and signature checks. |
 | GET `/api/exams/:id/policy` | `purpose=WRITE\|READ` (READ default) | `{policy}` or 503 `POLICY_NOT_READY`; any verified demo participant can fetch policies for direct negative tests. |
 | POST `/api/exams/:id/seal` | `{ciphertextBase64,writePolicyId,contentType:"text/plain;charset=utf-8",expectedVersion:1}` | `{exam}`; owner author, configured ciphertext limit, both policies required. |
 | GET `/api/exams/:id/ciphertext` | — | `{ciphertextBase64,encoding:"base64",sha256,byteLength,integrityLabel}`; teacher/admin intentionally included. |
 | POST `/api/exams/:id/access-requests` | `{kind:"SELF_ACCESS"\|"INVIGILATOR_RELEASE"}` | 202 `{id,observation}` with real IDs, or explicit 503. Self: app-admin, current subject, roles invigilator+_tide_decryptor. Release: designated invigilator/governor, fixed recipient, role _tide_decryptor. |
 | GET `/api/governance/requests` | — | `{requests,observedAt,authority}`; app-admin sees own, governor sees demo links; fetches live observations each time. |
+| POST `/api/governance/requests/:appRequestId/deny` | `{changeRequestId}` | Governor only. ID must belong to the active app link; fetch PENDING live, attempt through reviewed denial port, refetch and require observed REJECTED. Default 503 until Dinh wires that flow; committed/racing requests return 409. |
 | PUT `/api/demo/display-role` | `{runId,displayRole:"invigilator"}` | `{before,after,authorityChanged:false,verifiedRoles}`; app-admin only and enabled development demo only. |
-| GET `/api/activity` | optional `examId`, `limit`, `offset` | `{events,limit,offset,evidenceLabel}`; synthetic demo observations only. |
+| GET `/api/activity` | optional `examId`, `limit`, `offset` | `{events,entries,runId,limit,offset,evidenceLabel}`; active run only. `entries` uses FUNCTION_PLAN source/alias fields. |
 | POST `/api/activity/client-observations` | `{examId,kind:"DECRYPT_ATTEMPT",outcome,code,correlationId}` | 201 `{recorded:true,source:"CLIENT_REPORTED",authority}`; never authoritative proof of an opening. |
 
 `title` is 1–120 trimmed characters. `advisoryReleaseAt` must be an ISO timestamp with timezone; stored as UTC. Plaintext stays in the browser, with a 16 KiB UTF-8 limit checked before encryption. Signed policy bytes are limited to 64 KiB, independently from ciphertext. `.env.example` deliberately does not guess envelope overhead.
+
+Create the active run using the offline CLI before prepare. There is no runId override in browser requests. Archived run UUIDs return 404 on resource routes; a missing active run returns 503 `RUN_NOT_READY`. Session can report a missing run. Core resource objects keep their existing fields (`Exam.state=PREPARED|SEALED`, `SignedPolicy.id`); additive `summaries`/`summary` map PREPARED to DRAFT and policies include `policyId` as an alias. Browser PREPARING/ENCRYPTING are transient UI states. Summary releaseState uses fresh cached observations for the configured recipient and otherwise UNKNOWN_BLOCKED; it grants no authority and a real browser decrypt still decides access.
+
+Governance list items include `view: GovernanceRequestView`. Multiple CRs retain their own counts; aggregate count/threshold fields are omitted for multiple requests. Activity `entries` maps APP to APP_LOG and TIDE_OBSERVATION to OBSERVED_FROM_TIDECLOAK while preserving CLIENT_REPORTED. Privileged mutations and governance views require realm roles; the optional selected client namespace only establishes metadata participation.
 
 Client observation codes must match outcomes: `opened→SDK_OPENED`, `denied→SDK_ROLE_DENIED|SDK_POLICY_DENIED`, `not_ready→POLICY_NOT_READY`, `unavailable→NETWORK_UNAVAILABLE`, `error→SDK_UNKNOWN`. A generic network/threshold error must not become a permission-denial claim. Client correlation IDs are UUIDs; the server response has its own correlation ID.
 

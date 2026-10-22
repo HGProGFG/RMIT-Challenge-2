@@ -8,4 +8,5 @@ data/*
 !data/.gitkeep
 *.sqlite*
 *.db*
+*.lock
 docs/evidence/private/

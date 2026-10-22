@@ -1,24 +1,32 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { Exam, GovernanceObservation, Identity, PolicyPurpose, SignedPolicy } from "../contracts";
+import type { Exam, GovernanceObservation, Identity, PolicyPurpose, SignedPolicy, SignedPolicyRef, VerifiedIdentity } from "../contracts";
 import { AppError } from "../server/errors";
 import { db, transaction } from "./index";
+import { requireActiveRun } from "./runs";
 
-const examColumns = "id,runId,title,authorIssuer,authorSubject,advisoryReleaseAt,createdAt,sealedAt,contentType,state,ciphertextSha256,byteLength,version";
+const examColumns = "id,runId,title,authorIssuer,authorSubject,authorAlias,advisoryReleaseAt,createdAt,sealedAt,contentType,state,ciphertextSha256,byteLength,version";
 export const digest = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
 export function examById(id: string): Exam {
   const row = db().prepare(`SELECT ${examColumns} FROM Exam WHERE id=?`).get(id);
   if (!row) throw new AppError(404, "EXAM_NOT_FOUND", "Exam not found.");
   return row as unknown as Exam;
 }
+export function activeExamById(id: string, issuer?: string): Exam {
+  const run = requireActiveRun(issuer), exam = examById(id);
+  if (exam.runId !== run.id) throw new AppError(404, "EXAM_NOT_FOUND", "Exam not found in the active run.");
+  return exam;
+}
 export function listExams(limit: number, offset: number) {
-  return db().prepare(`SELECT ${examColumns} FROM Exam ORDER BY createdAt DESC,id DESC LIMIT ? OFFSET ?`).all(limit, offset) as unknown as Exam[];
+  return db().prepare(`SELECT ${examColumns} FROM Exam WHERE runId=? ORDER BY createdAt DESC,id DESC LIMIT ? OFFSET ?`).all(requireActiveRun().id, limit, offset) as unknown as Exam[];
 }
 type EventInput = { actor: Identity; exam: Exam; kind: string; outcome: string;
   source: "APP" | "CLIENT_REPORTED" | "TIDE_OBSERVATION"; code: string; correlationId: string };
 export function addActivity(e: EventInput) {
-  db().prepare("INSERT INTO ActivityEvent(id,runId,examId,actorIssuer,actorSubject,kind,outcome,source,code,correlationId,observedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?)").run(
-    randomUUID(), e.exam.runId, e.exam.id, e.actor.issuer, e.actor.subject,
-    e.kind, e.outcome, e.source, e.code, e.correlationId, new Date().toISOString());
+  const id = randomUUID();
+  db().prepare("INSERT INTO ActivityEvent(id,runId,examId,actorIssuer,actorSubject,kind,outcome,source,code,correlationId,observedAt,actorAlias) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").run(
+    id, e.exam.runId, e.exam.id, e.actor.issuer, e.actor.subject,
+    e.kind, e.outcome, e.source, e.code, e.correlationId, new Date().toISOString(), e.actor.alias);
+  return id;
 }
 function idempotency(actor: Identity, scope: string, key: string, input: unknown) {
   const hash = digest(JSON.stringify(input));
@@ -32,24 +40,25 @@ function saveIdempotency(actor: Identity, scope: string, key: string, hash: stri
 }
 export function prepareExam(actor: Identity, input: { title: string; advisoryReleaseAt: string }, key: string, correlationId: string) {
   return transaction(() => {
-    const { hash, prior } = idempotency(actor, "prepare", key, input);
+    const run = requireActiveRun(actor.issuer), scope = `prepare:${run.id}`;
+    const { hash, prior } = idempotency(actor, scope, key, input);
     if (prior) return JSON.parse(prior.response!) as Exam;
-    const id = randomUUID(), runId = randomUUID(), now = new Date().toISOString();
-    db().prepare("INSERT INTO DemoRun(id,mode,createdAt) VALUES(?,'LIVE_MANUAL_RELEASE',?)").run(runId, now);
-    db().prepare("INSERT INTO Exam(id,runId,title,authorIssuer,authorSubject,advisoryReleaseAt,createdAt,contentType,state) VALUES(?,?,?,?,?,?,?,'text/plain;charset=utf-8','PREPARED')")
-      .run(id, runId, input.title, actor.issuer, actor.subject, new Date(input.advisoryReleaseAt).toISOString(), now);
+    if (db().prepare("SELECT id FROM Exam WHERE runId=?").get(run.id)) throw new AppError(409, "RUN_EXAM_EXISTS", "This run already has its exam. Reset offline for another demo.");
+    const id = randomUUID(), now = new Date().toISOString();
+    db().prepare("INSERT INTO Exam(id,runId,title,authorIssuer,authorSubject,authorAlias,advisoryReleaseAt,createdAt,contentType,state) VALUES(?,?,?,?,?,?,?,?,'text/plain;charset=utf-8','PREPARED')")
+      .run(id, run.id, input.title, actor.issuer, actor.subject, actor.alias, new Date(input.advisoryReleaseAt).toISOString(), now);
     const exam = examById(id);
     addActivity({ actor, exam, kind: "EXAM_PREPARED", outcome: "prepared", source: "APP", code: "POLICY_NOT_READY", correlationId });
-    saveIdempotency(actor, "prepare", key, hash, exam);
+    saveIdempotency(actor, scope, key, hash, exam);
     return exam;
   });
 }
-export function getPolicy(examId: string, purpose: PolicyPurpose): SignedPolicy {
+export function getPolicy(examId: string, purpose: PolicyPurpose): SignedPolicyRef {
   examById(examId);
   const row = db().prepare("SELECT id,signedBytes,digest,metadata FROM ExamPolicy WHERE examId=? AND purpose=? AND version=1")
     .get(examId, purpose) as { id: string; signedBytes: Uint8Array; digest: string; metadata: string } | undefined;
   if (!row) throw new AppError(503, "POLICY_NOT_READY", "A verified signed policy is not available.", true);
-  return { ...JSON.parse(row.metadata), id: row.id, signedBytesBase64: Buffer.from(row.signedBytes).toString("base64"), digest: row.digest } as SignedPolicy;
+  return { ...JSON.parse(row.metadata), id: row.id, policyId: row.id, signedBytesBase64: Buffer.from(row.signedBytes).toString("base64"), digest: row.digest } as SignedPolicyRef;
 }
 export function insertPolicy(examId: string, purpose: PolicyPurpose, bytes: Uint8Array,
   metadata: Omit<SignedPolicy, "id" | "digest" | "signedBytesBase64">) {
@@ -85,8 +94,9 @@ export function sealExam(actor: Identity, id: string, bytes: Uint8Array, writePo
     if (exam.state !== "PREPARED" || exam.version !== expectedVersion) throw new AppError(409, "EXAM_FROZEN", "Exam is already sealed or its version changed.");
     if (getPolicy(id, "WRITE").id !== writePolicyId) throw new AppError(422, "POLICY_MISMATCH", "Write policy does not belong to this exam.");
     getPolicy(id, "READ");
-    db().prepare("UPDATE Exam SET state='SEALED',ciphertext=?,ciphertextSha256=?,byteLength=?,sealedAt=?,version=2 WHERE id=? AND state='PREPARED'")
-      .run(bytes, input.hash, bytes.byteLength, new Date().toISOString(), id);
+    const updated = db().prepare("UPDATE Exam SET state='SEALED',ciphertext=?,ciphertextSha256=?,byteLength=?,sealedAt=?,version=2 WHERE id=? AND state='PREPARED' AND version=?")
+      .run(bytes, input.hash, bytes.byteLength, new Date().toISOString(), id, expectedVersion);
+    if (updated.changes !== 1) throw new AppError(409, "EXAM_FROZEN", "Exam state or version changed before sealing.");
     const result = examById(id);
     addActivity({ actor, exam: result, kind: "EXAM_SEALED", outcome: "sealed", source: "APP", code: "CIPHERTEXT_STORED", correlationId });
     saveIdempotency(actor, `seal:${id}`, key, hash, result);
@@ -115,16 +125,34 @@ export function overrideDisplayRole(actor: Identity, runId: string, correlationI
   });
 }
 export function activity(examId: string | undefined, limit: number, offset: number) {
+  const runId = requireActiveRun().id;
   return examId
-    ? db().prepare("SELECT * FROM ActivityEvent WHERE examId=? ORDER BY observedAt DESC,id DESC LIMIT ? OFFSET ?").all(examId, limit, offset)
-    : db().prepare("SELECT * FROM ActivityEvent ORDER BY observedAt DESC,id DESC LIMIT ? OFFSET ?").all(limit, offset);
+    ? db().prepare("SELECT * FROM ActivityEvent WHERE runId=? AND examId=? ORDER BY observedAt DESC,id DESC LIMIT ? OFFSET ?").all(runId, examId, limit, offset)
+    : db().prepare("SELECT * FROM ActivityEvent WHERE runId=? ORDER BY observedAt DESC,id DESC LIMIT ? OFFSET ?").all(runId, limit, offset);
 }
 export type GovernanceLink = { id: string; examId: string; requesterIssuer: string; requesterSubject: string;
   targetIssuer: string; targetSubject: string; requestedRoles: string; changeRequestIds: string; observation: string; createdAt: string };
 export function governanceLinks(actor: Identity) {
-  return (actor.roles.includes("tide-realm-admin")
-    ? db().prepare("SELECT * FROM GovernanceLink ORDER BY createdAt DESC LIMIT 100").all()
-    : db().prepare("SELECT * FROM GovernanceLink WHERE requesterIssuer=? AND requesterSubject=? ORDER BY createdAt DESC LIMIT 100").all(actor.issuer, actor.subject)) as unknown as GovernanceLink[];
+  const runId = requireActiveRun(actor.issuer).id;
+  const roles = "realmRoles" in actor ? (actor as VerifiedIdentity).realmRoles : actor.roles;
+  return (roles.includes("tide-realm-admin")
+    ? db().prepare("SELECT * FROM GovernanceLink WHERE examId IN(SELECT id FROM Exam WHERE runId=?) ORDER BY createdAt DESC LIMIT 100").all(runId)
+    : db().prepare("SELECT * FROM GovernanceLink WHERE examId IN(SELECT id FROM Exam WHERE runId=?) AND requesterIssuer=? AND requesterSubject=? ORDER BY createdAt DESC LIMIT 100").all(runId, actor.issuer, actor.subject)) as unknown as GovernanceLink[];
+}
+export function getDisplayRole(runId: string, actor: Identity): string | null {
+  const row = db().prepare("SELECT displayRole FROM DemoRoleOverride WHERE runId=? AND issuer=? AND subject=?")
+    .get(runId, actor.issuer, actor.subject) as { displayRole: string } | undefined;
+  return row?.displayRole ?? null;
+}
+export function getGovernanceLink(id: string) {
+  const link = db().prepare("SELECT * FROM GovernanceLink WHERE id=? AND examId IN(SELECT id FROM Exam WHERE runId=?)").get(id, requireActiveRun().id) as unknown as GovernanceLink | undefined;
+  if (!link) throw new AppError(404, "REQUEST_NOT_FOUND", "Request not found in the active run.");
+  const observation = JSON.parse(link.observation) as GovernanceObservation;
+  return { ...link, stale: !Number.isFinite(Date.parse(observation.observedAt)) || Date.now() - Date.parse(observation.observedAt) > 60000 };
+}
+export function updateObservedStatus(id: string, observation: GovernanceObservation) {
+  getGovernanceLink(id);
+  db().prepare("UPDATE GovernanceLink SET observation=? WHERE id=?").run(JSON.stringify(observation), id);
 }
 export function reserveProposal(actor: Identity, examId: string, kind: string, key: string) {
   return transaction(() => {

@@ -10,7 +10,10 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "db:migrate": "tsx scripts/migrate.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "run:create": "tsx scripts/reset-run.ts --create",
+    "run:reset": "tsx scripts/reset-run.ts",
+    "verify:dpop": "tsx scripts/verify-dpop-asset.ts"
   },
   "dependencies": {
     "jose": "6.2.13",

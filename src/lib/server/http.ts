@@ -1,14 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import type { ApiError, ApiSuccess, Identity, Role } from "../contracts";
+import type { ApiError, ApiSuccess, Role, VerifiedIdentity } from "../contracts";
 import { claimRate } from "../db";
 import { actorBucket, authenticate } from "./auth";
 import { appOrigin } from "./config";
 import { AppError } from "./errors";
 
-export type ApiContext = { actor: Identity; correlationId: string };
-export function requireRoles(actor: Identity, roles: Role[]) {
-  if (!roles.some(role => actor.roles.includes(role))) throw new AppError(403, "FORBIDDEN", "This verified role cannot perform the operation.");
+export type ApiContext = { actor: VerifiedIdentity; correlationId: string };
+export function requireRoles(actor: VerifiedIdentity, roles: Role[]) {
+  if (!roles.some(role => actor.realmRoles.includes(role))) throw new AppError(403, "FORBIDDEN", "This verified realm role cannot perform the operation.");
 }
 export function idempotencyKey(req: Request) {
   const key = req.headers.get("idempotency-key") ?? "";
@@ -58,10 +58,13 @@ export function json<T>(data: T, correlationId: string, status = 200) {
 export async function protectedRoute(req: Request, handler: (ctx: ApiContext) => Promise<Response>) {
   const correlationId = randomUUID(); let response: Response;
   try {
+    if (!["GET", "HEAD"].includes(req.method) &&
+        (req.headers.get("origin") !== appOrigin() || req.headers.get("sec-fetch-site") === "cross-site")) {
+      throw new AppError(403, "ORIGIN_REJECTED", "Mutations require the configured same origin.");
+    }
     const actor = await authenticate(req);
     if (!claimRate(actorBucket(actor), 120)) throw new AppError(429, "RATE_LIMITED", "Too many requests. Retry in one minute.", true);
     if (!["GET", "HEAD"].includes(req.method)) {
-      if (req.headers.get("origin") !== appOrigin() || req.headers.get("sec-fetch-site") === "cross-site") throw new AppError(403, "ORIGIN_REJECTED", "Mutations require the configured same origin.");
       if (!claimRate(`${actorBucket(actor)}:mutation`, 30)) throw new AppError(429, "RATE_LIMITED", "Too many mutations. Retry in one minute.", true);
     }
     response = await handler({ actor, correlationId });

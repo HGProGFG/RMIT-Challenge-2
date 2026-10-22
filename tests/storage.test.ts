@@ -7,11 +7,11 @@ import { fixture, fixturePolicies } from "./fixtures";
 
 const f = await fixture(), author = f.actor("author"), input = { title: "Synthetic exam", advisoryReleaseAt: "2026-10-23T02:00:00Z" };
 after(f.cleanup);
-const prepare = (key = randomUUID()) => repo.prepareExam(author, input, key, randomUUID());
+const prepare = (key = randomUUID()) => { f.freshRun(); return repo.prepareExam(author, input, key, randomUUID()); };
 test("prepare idempotency is durable and rejects different input with same key", () => {
   const key = randomUUID(), exam = prepare(key);
   closeDb();
-  assert.equal(prepare(key).id, exam.id);
+  assert.equal(repo.prepareExam(author, input, key, randomUUID()).id, exam.id);
   assert.throws(() => repo.prepareExam(author, { ...input, title: "Changed" }, key, randomUUID()), { status: 409 });
 });
 test("stores and reads exact opaque ciphertext larger than plaintext limit, with ciphertext digest", () => {

@@ -1,4 +1,4 @@
-import { after, test } from "node:test";
+import { after, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import { handleApi } from "../src/lib/server/api";
@@ -7,6 +7,7 @@ import { prepareExam } from "../src/lib/db/repository";
 
 const f = await fixture();
 after(f.cleanup);
+beforeEach(() => { f.freshRun(); });
 const input = { title: "Synthetic paper", advisoryReleaseAt: "2026-10-23T02:00:00Z" };
 test("every implemented API fails closed without a session and uses no-store error envelope", async () => {
   for (const path of ["/session", "/exams", "/exams/prepare", "/activity", "/governance/requests", "/demo/display-role"]) {

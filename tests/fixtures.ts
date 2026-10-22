@@ -4,6 +4,10 @@ import { resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { calculateJwkThumbprint, exportJWK, generateKeyPair, SignJWT } from "jose";
 import { closeDb } from "../src/lib/db/index";
+import { db } from "../src/lib/db/index";
+import { migrate } from "../src/lib/db/migrate";
+import { createDemoRun } from "../src/lib/db/runs";
+import { getVersionManifest } from "../src/lib/server/readiness";
 import { insertPolicy } from "../src/lib/db/repository";
 import type { Identity, Role } from "../src/lib/contracts";
 
@@ -20,6 +24,13 @@ export async function fixture() {
   process.env.APP_ORIGIN = origin;
   process.env.MAX_CIPHERTEXT_BYTES = "131072";
   process.env.DEMO_ATTACKS_ENABLED = "true";
+  migrate();
+  function freshRun() {
+    // Test-only archival, so tests can inspect isolation without deleting previous fixtures.
+    db().prepare("UPDATE DemoRun SET active=0 WHERE active=1").run();
+    return createDemoRun({ realmId: "exam", clientId: "vault", issuer, manifest: getVersionManifest() });
+  }
+  freshRun();
   const actor = (role: Role, subject: string = role): Identity => ({ issuer, subject, alias: subject, roles: [role] });
   async function token(role: Role = "author", overrides: Record<string, unknown> = {}) {
     const now = Math.floor(Date.now() / 1000);
@@ -47,7 +58,7 @@ export async function fixture() {
     if (!directory.startsWith(parent + "\\") && !directory.startsWith(parent + "/")) throw Error("Unsafe test cleanup path");
     rmSync(directory, { recursive: true, force: true });
   }
-  return { directory, adapterPath, actor, token, request, cleanup, issuer, origin };
+  return { directory, adapterPath, actor, token, request, cleanup, freshRun, issuer, origin };
 }
 export function fixturePolicies(examId: string) {
   const make = (purpose: "WRITE" | "READ") => insertPolicy(examId, purpose,

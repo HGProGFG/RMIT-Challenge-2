@@ -8,11 +8,15 @@ Base UI work on the backend scaffold; replace the temporary `src/app/page.tsx` a
 
 The upload sequence is prepare → wait for WRITE and READ policies → browser encrypt → seal → read back stored ciphertext. Opening is browser SDK decryption, never an API plaintext response. The admin display-role attack is available with `npm run dev` and `DEMO_ATTACKS_ENABLED=true`; it is absent in production. Each profile must actually sign in.
 
+FUNCTION_PLAN additions are additive: `VerifiedIdentity`, readiness/missing fields, UI state types, summaries, `SignedPolicyRef.policyId`, governance `view` and activity `entries` are available alongside existing fields. Backend state PREPARED maps to DRAFT in summaries. Operator creates the active run offline before prepare; UI never chooses arbitrary historical runs. Session exposes readiness/version evidence for the drawer. Full mapping is in `docs/function-plan-status.md`.
+
 ## Dinh
 
 Supply `src/lib/tide/server/**` exports for the application port in `src/lib/server/tide-integration.ts`. Keep the existing JWT/DPoP route protection connected to SQLite; review real claim format/roles and update the boundary if the chosen realm differs. Supply browser provider/session/secureFetch and shared policy encrypt/decrypt to Bao. Confirm envelope overhead before setting MAX_CIPHERTEXT_BYTES.
 
 Policy verification must authenticate and parse exact signed bytes. Proposal/read integration must return actual IDs, separate per-request counts and statuses, fixed allowlisted targets and authoritative committed state. The local implementation cannot prove an active 2-of-3 Tide policy. Approval happens in each governor's session or supported console; the backend never approves as a service account. Keep readiness unavailable until verified.
+
+Set `browserReadiness` only after the actual provider is connected. The new `denyReadiness`/`denyChangeRequest` boundary is separate from proposal/read readiness. Keep it unavailable unless the governor's own authorization and a conditional pending-only denial can be preserved; otherwise use the supported console. The API does not forward its DPoP proof to another URL, sign as a governor, approve or commit. Record a genuine realm image digest in `TIDECLOAK_REALM_IMAGE_DIGEST` for evidence; unknown stays null.
 
 ## Merge procedure
 
