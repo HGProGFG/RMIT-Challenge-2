@@ -46,9 +46,12 @@ the installed JS SDK has the same SHA-256 as the copied pack relay:
 
 1. Install Docker Desktop and start its Linux container engine. Run `npm run tide:check`.
    It compares the host and Docker engine clocks with independent HTTPS time sources and stops
-   on a measured skew over 30 seconds. It changes no clocks. If network checks are unavailable,
-   it warns; verify time before activation. A healthy `/active` response alone does not prove
-   Tide wallet finalization is available.
+   on a measured skew over 30 seconds. It changes no clocks. Unavailable, cached, non-success,
+   slow or disagreeing time samples now stop the preflight instead of returning success.
+   The Node helper reports `PASS`/exit 0 for verified clocks, `FAIL`/exit 1 for measured skew,
+   and `UNKNOWN`/exit 2 when verification is unavailable; the PowerShell wrapper stops on both
+   nonzero results. Resolve connectivity or Docker errors before retrying. Even `PASS` only
+   verifies clocks: neither it nor a healthy `/active` response proves Tide wallet finalization.
 2. Keep `.env.tide-bootstrap` separate from the application's `.env.local`. For another deployment,
    a human must supply `TIDE_LICENSE_EMAIL`, `TIDE_TERMS_ACCEPTED=yes` only after agreeing at
    <https://tide.org/legal>, and `TIDE_HOSTING=docker`. There is no default email or consent.
