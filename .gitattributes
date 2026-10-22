@@ -1,0 +1,2 @@
+public/tide_dpop_auth.html -text
+src/lib/server/vendor/verifyDpop.ts -text whitespace=cr-at-eol

@@ -1,0 +1,63 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { z } from "zod";
+import { AppError } from "./errors";
+
+const publicKey = z.object({ kty: z.literal("OKP"), crv: z.literal("Ed25519"), x: z.string().min(1),
+  kid: z.string().optional(), alg: z.literal("EdDSA").optional(), use: z.literal("sig").optional()
+}).passthrough().refine(k => !("d" in k), "Public keys only").transform(k => ({
+  kty: k.kty, crv: k.crv, x: k.x, ...(k.kid ? { kid: k.kid } : {}),
+  ...(k.alg ? { alg: k.alg } : {}), ...(k.use ? { use: k.use } : {})
+}));
+const adapterSchema = z.object({ realm: z.string().min(1), resource: z.string().min(1),
+  "auth-server-url": z.url(), jwk: z.object({ keys: z.array(publicKey).min(1) }),
+  vendorId: z.string().min(1).optional(), homeOrkUrl: z.url().optional()
+});
+export function appOrigin() {
+  try {
+    const u = new URL(process.env.APP_ORIGIN ?? "http://localhost:3000");
+    if (u.pathname !== "/" || u.username || u.password || u.search || u.hash ||
+        (u.protocol !== "https:" && !(u.protocol === "http:" && ["localhost", "127.0.0.1"].includes(u.hostname)))) throw Error();
+    return u.origin;
+  } catch { throw new AppError(503, "CONFIG_UNAVAILABLE", "APP_ORIGIN must be a canonical HTTPS origin or local HTTP origin."); }
+}
+/** Explicit allowlist: never serialize the original export or any credentials to the browser. */
+export function publicTideConfig() {
+  try {
+    const { adapter } = tideConfig();
+    if (!adapter.vendorId || !adapter.homeOrkUrl) return null;
+    // IAMService.loadConfig selects this exact exported field for the current origin.
+    const originKey = `client-origin-auth-${appOrigin()}`;
+    const raw = JSON.parse(readFileSync(resolve(process.env.TIDECLOAK_ADAPTER_PATH ?? "data/tidecloak.json"), "utf8"));
+    const originAuth: unknown = raw[originKey];
+    if (typeof originAuth !== "string" || !originAuth.length || originAuth.length > 8192) return null;
+    const url = new URL(adapter["auth-server-url"]), ork = new URL(adapter.homeOrkUrl);
+    for (const u of [url, ork]) {
+      if (u.username || u.password || u.hash || u.search || (u.protocol !== "https:" &&
+          !(u.protocol === "http:" && ["localhost", "127.0.0.1"].includes(u.hostname)))) return null;
+    }
+    return { ...adapter, [originKey]: originAuth, redirectUri: `${appOrigin()}/auth/redirect`,
+      silentCheckSsoRedirectUri: `${appOrigin()}/silent-check-sso.html` };
+  } catch { return null; }
+}
+export type PublicTideConfig = NonNullable<ReturnType<typeof publicTideConfig>>;
+export function tideConsoleUrl(): string | null {
+  const config = publicTideConfig();
+  return config ? `${config["auth-server-url"].replace(/\/+$/, "")}/realms/${encodeURIComponent(config.realm)}/tide-console/` : null;
+}
+export function tideConfig() {
+  try {
+    const adapter = adapterSchema.parse(JSON.parse(readFileSync(resolve(process.env.TIDECLOAK_ADAPTER_PATH ?? "data/tidecloak.json"), "utf8")));
+    const url = new URL(adapter["auth-server-url"]);
+    if (url.username || url.password || url.search || url.hash || (url.protocol !== "https:" &&
+        !(url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname)))) throw Error();
+    return { adapter, issuer: `${adapter["auth-server-url"].replace(/\/+$/, "")}/realms/${encodeURIComponent(adapter.realm)}` };
+  } catch { throw new AppError(503, "AUTH_NOT_READY", "A pinned public Tide adapter with embedded Ed25519 keys is required.", true); }
+}
+export function ciphertextLimit(): number {
+  const n = Number(process.env.MAX_CIPHERTEXT_BYTES);
+  if (!Number.isSafeInteger(n) || n < 16384 || n > 1024 * 1024) {
+    throw new AppError(503, "ENVELOPE_LIMIT_NOT_READY", "Dinh must confirm MAX_CIPHERTEXT_BYTES for the chosen envelope.");
+  }
+  return n;
+}

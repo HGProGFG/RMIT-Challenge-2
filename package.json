@@ -1,0 +1,43 @@
+{
+  "name": "sealed-exam-vault",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "scripts": {
+    "demo": "node scripts/local-demo.mjs",
+    "dev": "node scripts/local-demo.mjs",
+    "build": "next build --webpack",
+    "start": "next start --hostname 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "run:create": "tsx scripts/reset-run.ts --create",
+    "run:reset": "tsx scripts/reset-run.ts",
+    "verify:dpop": "tsx scripts/verify-dpop-asset.ts",
+    "tide:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tide-local.ps1 -CheckOnly",
+    "tide:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tide-local.ps1",
+    "tide:plan": "node scripts/tide-realm-plan.mjs"
+  },
+  "dependencies": {
+    "@tidecloak/js": "0.14.41",
+    "@tidecloak/nextjs": "0.14.40",
+    "@tidecloak/react": "0.14.33",
+    "@tideorg/js": "0.14.29",
+    "heimdall-tide": "0.14.41",
+    "jose": "6.2.13",
+    "next": "16.4.2",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

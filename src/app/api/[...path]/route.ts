@@ -1,0 +1,10 @@
+import { handleSimulationApi } from "@/lib/simulation/server";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+const dispatch = handleSimulationApi;
+export const GET = dispatch;
+export const POST = dispatch;
+export const PUT = dispatch;
+export const DELETE = dispatch;
+export const PATCH = dispatch;
+export const OPTIONS = dispatch;

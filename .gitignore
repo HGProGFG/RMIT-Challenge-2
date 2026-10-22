@@ -1,0 +1,13 @@
+node_modules/
+.next/
+.next-*/
+coverage/
+*.tsbuildinfo
+.env*
+!.env.example
+data/*
+!data/.gitkeep
+*.sqlite*
+*.db*
+*.lock
+docs/evidence/private/
