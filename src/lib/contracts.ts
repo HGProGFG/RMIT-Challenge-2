@@ -54,6 +54,10 @@ export type VersionManifest = { applicationVersion: string; nodeVersion: string;
   realmImageDigest: string | null; dpopAssetSha256: string | null; dpopAssetMatches: boolean; pinnedKeyFingerprint: string | null };
 export type DemoRun = { id: string; active: number; mode: "LIVE_MANUAL_RELEASE"; createdAt: string;
   realmId: string; clientId: string; issuer: string; versionManifest: string; expectedPolicyFingerprints: string; pinnedKeyFingerprint: string | null };
+export type SessionResponse = { identity: VerifiedIdentity;
+  readiness: IntegrationReadiness & { authentication: Readiness; policy: Readiness; governance: Readiness };
+  capabilities: { deny: Readiness }; activeRunId: string | null; versionManifest: VersionManifest;
+  mode: "LIVE_MANUAL_RELEASE"; scheduleIsAdvisory: true };
 export const denyRequestSchema = z.object({ changeRequestId: z.string().min(1).max(256) }).strict();
 export const prepareSchema = z.object({ title: z.string().trim().min(1).max(120),
   advisoryReleaseAt: z.iso.datetime({ offset: true }) }).strict();

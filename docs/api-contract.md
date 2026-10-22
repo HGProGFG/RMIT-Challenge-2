@@ -6,7 +6,7 @@ Mutations require `Origin: APP_ORIGIN`, JSON and strict schema fields only. Prep
 
 | Method/path | Body/query | Data |
 | --- | --- | --- |
-| GET `/api/session` | — | `{identity:{issuer,subject,alias,roles,realmRoles,clientRoles},readiness:{authentication,policy,governance,tide,missing},activeRunId,versionManifest,mode,scheduleIsAdvisory}` |
+| GET `/api/session` | — | `{identity:{issuer,subject,alias,roles,realmRoles,clientRoles},readiness:{authentication,policy,governance,tide,missing},capabilities:{deny},activeRunId,versionManifest,mode,scheduleIsAdvisory}`; shared browser/server type `SessionResponse`. |
 | POST `/api/exams/prepare` | `{title,advisoryReleaseAt}` | 201 `{exam,examId,policyStatus}`; realm author only. Fresh exam UUID in the explicit active run; a second different exam returns 409. Policy status is ready only when both stored policies exist. |
 | GET `/api/exams` | `limit=1..100`, `offset=0..1000000` | `{exams,summaries,runId,limit,offset,accessReleaseStatus:"unknown"}`; active run only. |
 | GET `/api/exams/:id` | — | `{exam,summary,accessReleaseStatus:"unknown",scheduleIsAdvisory:true}`; active run only. |

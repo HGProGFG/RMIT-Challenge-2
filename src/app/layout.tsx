@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-
-export const metadata = { title: "Sealed Exam Vault", description: "Encrypted exam storage with manual governance release." };
+import { VaultSessionProvider } from "../providers/vault-session";
+import "./globals.css";
+export const metadata = { title: "Sealed — Exam Vault", description: "Đề thi niêm phong. Encrypted exam storage with independently approved access and honest security boundaries." };
 export default function Layout({ children }: { children: ReactNode }) {
-  return <html lang="en"><body style={{ fontFamily: "system-ui", margin: 32 }}>{children}</body></html>;
+  return <html lang="en"><body><VaultSessionProvider>{children}</VaultSessionProvider></body></html>;
 }

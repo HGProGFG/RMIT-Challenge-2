@@ -47,6 +47,7 @@ export function handleApi(req: Request) {
     const url = new URL(req.url), path = url.pathname.replace(/\/$/, ""), method = req.method;
     if (method === "GET" && path === "/api/session") return json({ identity: actor,
       readiness: { authentication: "ready", policy: tideIntegration.policyReadiness, governance: tideIntegration.governanceReadiness, ...getIntegrationReadiness() },
+      capabilities: { deny: tideIntegration.denyReadiness },
       versionManifest: getVersionManifest(), activeRunId: getActiveRun()?.id ?? null,
       mode: "LIVE_MANUAL_RELEASE", scheduleIsAdvisory: true }, correlationId);
     const run = requireActiveRun(actor.issuer), config = tideConfig();

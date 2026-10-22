@@ -26,4 +26,6 @@ Set `browserReadiness` only after the actual provider is connected. The new `den
 4. Run real author → seal → teacher/admin negative calls → one-vote pending/under-threshold denial → second distinct approval/commit → fresh invigilator opening. Record sanitized IDs and results. Local unit fixtures cannot satisfy this step.
 5. Bao finishes the README/video only after observed behavior and limits are known.
 
-At backend handoff no Bao/Dinh feature branch or PR was available remotely. The backend interfaces are prepared; full application integration remains dependent on those branches. This document does not claim the team has agreed to interface details or completed live security checks.
+Bao's `codex/sealed-vault-web` branch is now combined with the current backend on `feat/hoang-bao-integration`. Merge resolution retains the current backend and Bao's seven screens, updates shared session/role/readiness contracts, resumes existing prepared papers and connects pending-only rejection controls. Source work is preserved from PR #1 and PR #2. The combined revision has 59 local checks plus typecheck/build and browser preview verification.
+
+Dinh's real Tide implementation remains outstanding. This integration does not claim human agreement on all interface details or completed live security checks. Review the combined PR before bringing the team revision into main.

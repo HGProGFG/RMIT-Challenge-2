@@ -15,7 +15,7 @@ npm run run:create
 npm run dev
 ```
 
-The shell initially shows the integration scaffold at http://localhost:3000. CLI commands load `.env.local` then `.env`, while explicit shell environment takes priority. Next loads local environment when serving. Stop the application before migration/create/reset. All `/api/**` routes require verified sessions; opening an API in an unauthenticated browser returns 401. Use Dinh's browser `secureFetch` after sign-in. Until Dinh supplies the pinned public adapter, run creation and live sign-in remain unavailable; unit tests use isolated local fixtures.
+The application initially shows Bao's labeled workspace preview at http://localhost:3000. CLI commands load `.env.local` then `.env`, while explicit shell environment takes priority. Next loads local environment when serving. Stop the application before migration/create/reset. All `/api/**` routes require verified sessions; opening an API in an unauthenticated browser returns 401. Use Dinh's browser `secureFetch` after sign-in. Until Dinh supplies the pinned public adapter, run creation and live sign-in remain unavailable; unit tests use isolated local fixtures.
 
 Configuration:
 

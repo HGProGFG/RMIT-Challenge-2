@@ -9,6 +9,7 @@ Scope: application backend only. Tests use locally generated signing keys, rando
 | Next.js production compilation | Passed with Next 16.4.2 on Node 24.19.0. |
 | TypeScript strict checking | Passed, including all test files. |
 | Backend automated checks | 51 checks passed, including proposal/denial validation with explicit adapter test doubles, run isolation, offline reset and migration upgrade. |
+| Combined Bao + Hoang revision | 59 total checks passed after UI integration: 51 backend, 3 browser-boundary and 5 client/backend transport checks. See hoang-bao-integration.md for browser evidence. |
 | Prepare/seal idempotency and ownership | Local automated checks passed, persisted SQLite. |
 | Ciphertext larger than plaintext limit, exact readback/digest | Local automated checks passed with 20/40 KB random opaque bytes. |
 | Sealed record overwrite | API/repository conflicts and SQL update trigger tested. |
