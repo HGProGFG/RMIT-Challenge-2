@@ -7,11 +7,20 @@ callback, browser encryption/decryption, governor policy signing, and pinned-key
 The server JWT/DPoP verifier and atomic replay store remain in use. The production build and local
 regression tests are separate from live Tide acceptance.
 
-**No application realm, seven linked Tide identities, signed M0 quorum, live ciphertext or
-two-person approval has been verified yet.** Docker Desktop was absent when development began;
-the owner chose to install it themselves. A later preflight found the Docker CLI installed, but
-the Linux engine unavailable and WSL not installed. The owner's licence email and explicit Terms acceptance
-are saved only in the gitignored `.env.tide-bootstrap`. No licence activation has been attempted.
+Docker's Linux engine is running with WSL 3.0.3. The dedicated `sealed-exam-vault` realm,
+`sealed-exam-vault-client` client and seven synthetic account slots have been created. The owner
+confirmed that the selected ORK network has `RelationshipAttestation:1`. The owner's licence email,
+explicit Terms acceptance and bootstrap credentials stay in ignored local files.
+
+**Tide activation remains incomplete.** The normal free-tier setup and one bounded finalization
+attempt returned HTTP 500, `TIDE-IDPEXT-VENDOR-KEYGEN_FAILED`, with wallet status `UNDETERMINED`.
+An earlier Midgard licence lookup returned upstream HTTP 503. A later read returned licence details
+and `isPendingLicenseActive=true`, but the actual adapter export still returned HTTP 500. Those
+reads do not establish completed vendor-key setup. See [the sanitized diagnostic](evidence/tide/bootstrap-2026-10-22.md).
+
+No human Tide identities are linked, IGA has not been enabled, and no signed M0 quorum, live
+ciphertext or two-person approval has been verified. The application deliberately remains
+unavailable for sealing until a genuine adapter and measured ciphertext limit are supplied.
 
 The integration uses these npm releases resolved on 22 October 2026:
 
@@ -38,6 +47,9 @@ the installed JS SDK has the same SHA-256 as the copied pack relay:
    container and dedicated `sealed-vault-tide-data` volume. It never deletes another container or
    database. The admin password is generated into the ignored bootstrap file and supplied through
    an ignored Docker env file. It is never printed or passed as a literal shell argument.
+   The image runs as UID 1000; the script prepares ownership on this dedicated volume before
+   first startup, or while its verified project container is stopped. The server runs as its
+   normal image user. An orphaned volume name is a stop for inspection, not permission to overwrite it.
 4. This command starts infrastructure only. It **does not create or license a realm**. Its local
    image digest observation is in ignored `data/tide-image.json`.
 
@@ -47,6 +59,7 @@ they do not change the machine's execution policy.
 Before creating the application realm, confirm with the Tide team that its network includes
 `RelationshipAttestation:1` (ORK main c69fc4f6, 16 October 2026 or a compatible later build).
 Contact: <https://discord.gg/XBMd9ny2q5> or info@tide.org. Do not replace it with a custom contract.
+The owner has supplied this confirmation for the current local realm.
 
 ## Realm bootstrap and seven identities
 
@@ -66,6 +79,9 @@ container cleanup step against this setup. In order:
    all client redirects/origins/mappers before enabling IGA.
 2. License via `vendorResources/setUpTideRealm` using the owner's provided email. A response
    containing `NEED_PAYMENT`, a checkout redirect or a non-2xx is a stop, not a successful licence.
+   This free-tier flow requests activation automatically; it has no manually entered challenge
+   licence-key field. If it partially creates a vendor and then fails, retain the database and
+   inspect the existing state with Tide support before retrying or creating another realm.
 3. Set `iga.attestor=tide`. Read `tide-admin/iga-status` first; enable IGA only if off. Current
    `toggle-iga` is a flip: never call it twice. Drain only known bootstrap requests in FirstAdmin
    mode; never blanket-approve `DISABLE_IGA`, `DELETE_REALM` or `OFFBOARD_REALM`.

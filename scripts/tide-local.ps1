@@ -39,12 +39,25 @@ $taskName = 'tidecloak-sealed-vault'
 $taskExisting = & $taskDockerPath ps -a --filter "name=^/$taskName`$" --format '{{.Names}}'
 if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect Docker containers.' }
 if ($taskExisting) {
-    $taskLabel = & $taskDockerPath inspect --format '{{index .Config.Labels "org.sealed-vault.owner"}}' $taskName
-    if ($LASTEXITCODE -ne 0 -or $taskLabel -ne 'sealed-vault') { throw 'Container name belongs to another setup. Nothing was changed.' }
+    $taskLabels = (& $taskDockerPath inspect --format '{{json .Config.Labels}}' $taskName | ConvertFrom-Json)
+    if ($LASTEXITCODE -ne 0 -or $taskLabels.'org.sealed-vault.owner' -ne 'sealed-vault') { throw 'Container name belongs to another setup. Nothing was changed.' }
+    $taskMounts = @(& $taskDockerPath inspect --format '{{json .Mounts}}' $taskName | ConvertFrom-Json)
+    if (-not ($taskMounts | Where-Object { $_.Name -eq 'sealed-vault-tide-data' -and $_.Destination -eq '/opt/keycloak/data/h2' })) { throw 'Unexpected project volume mapping.' }
+    $taskRunning = & $taskDockerPath inspect --format '{{.State.Running}}' $taskName
+    if ($taskRunning -ne 'true') {
+        & $taskDockerPath run --rm --user 0:0 --entrypoint /bin/sh --mount type=volume,source=sealed-vault-tide-data,target=/opt/keycloak/data/h2 tideorg/tidecloak-dev:latest -c 'chown -R 1000:1000 /opt/keycloak/data/h2'
+        if ($LASTEXITCODE -ne 0) { throw 'Cannot prepare permissions on the project volume.' }
+    }
     & $taskDockerPath start $taskName | Out-Null
 } else {
     $taskPort = Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue
     if ($taskPort) { throw 'Port 8080 is already in use. No existing service was stopped.' }
+    $taskOldVolume = & $taskDockerPath volume ls --filter 'name=^sealed-vault-tide-data$' --format '{{.Name}}'
+    if ($taskOldVolume) { throw 'The data volume already exists without this project container. Inspect it before reusing it.' }
+    & $taskDockerPath volume create --label org.sealed-vault.owner=sealed-vault sealed-vault-tide-data | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot create the project data volume.' }
+    & $taskDockerPath run --rm --user 0:0 --entrypoint /bin/sh --mount type=volume,source=sealed-vault-tide-data,target=/opt/keycloak/data/h2 tideorg/tidecloak-dev:latest -c 'chown -R 1000:1000 /opt/keycloak/data/h2'
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot prepare permissions on the project volume.' }
     & $taskDockerPath run -d --name $taskName --label org.sealed-vault.owner=sealed-vault --mount type=volume,source=sealed-vault-tide-data,target=/opt/keycloak/data/h2 -p 127.0.0.1:8080:8080 --env-file $taskContainerEnv tideorg/tidecloak-dev:latest | Out-Null
 }
 if ($LASTEXITCODE -ne 0) { throw 'TideCloak container could not start.' }
@@ -54,4 +67,4 @@ for ($taskAttempt = 0; $taskAttempt -lt 24; $taskAttempt++) {
 }
 $taskImage = & $taskDockerPath inspect --format '{{.Image}}' $taskName
 if ($taskImage -match '^sha256:[a-f0-9]{64}$') { [IO.File]::WriteAllText((Join-Path $taskDataPath 'tide-image.json'), (@{imageDigest=$taskImage; observedAt=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json)) }
-Write-Output 'TideCloak is available at http://localhost:8080. No application realm has been created. Continue with docs/tide-setup.md.'
+Write-Output 'TideCloak infrastructure is available at http://localhost:8080. Continue realm setup with docs/tide-setup.md.'

@@ -35,8 +35,11 @@ and a gated proposal/read transport with console fallback. It recognizes the rea
 has 68 local regression checks, typecheck, production build and HTTP smoke checks. See
 [Tide setup](tide-setup.md) and [live evidence status](evidence/tide/status.json).
 
-Live realm creation, human enrollment, envelope measurement and the A1–A15 security demonstration
-remain outstanding. Docker's Linux engine/WSL is unavailable on the current machine. Tide doctor
-still fails its missing-adapter check; the real adapter must come from the licensed realm.
+Docker's Linux engine is now running with WSL 3.0.3. The dedicated realm, application client and
+seven synthetic account slots exist. Tide's automatic free-tier activation and one finalization
+attempt returned HTTP 500 with wallet status `UNDETERMINED`. A pending subscription is reported
+active, but genuine adapter export still fails. Human enrollment, IGA enablement, envelope
+measurement and the A1–A15 security demonstration remain outstanding. Tide doctor still fails
+its missing-adapter check; the real adapter must come from the successfully bootstrapped realm.
 This integration does not claim completed live security checks. Review the combined PR before
 bringing the team revision into main.
