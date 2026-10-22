@@ -26,6 +26,12 @@ Tide's MCP maps the intended integration to RelationshipAttestation:1: separate 
 
 Seal a synthetic paper, try opening as a teacher or administrator, approve release as two different governors, then open as the invigilator. The simulator labels every screen and event. Browser AES-GCM uses demo keys held by the local server; it provides no Tide distributed-security guarantee. Release is manual, the schedule advisory and logs editable.
 
+## Demo video
+
+[Watch or download the Plan C demo](https://media.githubusercontent.com/media/HGProGFG/RMIT-Challenge-2/main/docs/demo/plan-c-demo-2026-10-22.mp4).
+
+The recording demonstrates the local simulation. [The original MP4](docs/demo/plan-c-demo-2026-10-22.mp4) is stored with Git LFS; use `git lfs pull` to download it after cloning.
+
 ## Setup
 
 Use Node.js 24 and npm:
