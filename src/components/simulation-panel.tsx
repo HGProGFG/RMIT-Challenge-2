@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Exam, Role, SessionResponse } from "../lib/contracts";
 import { api, mutation, safeError } from "../lib/client/api";
@@ -10,8 +10,9 @@ const accounts = [
   ["governor-1", "Governor 1"], ["governor-2", "Governor 2"], ["governor-3", "Governor 3"],
 ] as const;
 export function SimulationPanel() {
-  const { simulation, session, login, logout, refresh, notify } = useVaultSession();
-  const [selected, setSelected] = useState("author"), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
+  const { simulation, session, loading, error, login, logout, refresh, notify } = useVaultSession();
+  const [selected, setSelected] = useState(""), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
+  useEffect(() => { setSelected(session?.identity.subject ?? ""); }, [session?.identity.subject]);
   if (!simulation) return null;
   async function switchAccount() {
     setBusy(true); setMessage("");
@@ -40,17 +41,19 @@ export function SimulationPanel() {
   }
   const canRelease = session?.identity.roles.some(r => r === "invigilator" || r === "tide-realm-admin");
   return <details className="simulation-panel" open>
-    <summary>Local simulation controls <span>Network independent · synthetic accounts</span></summary>
+    <summary>Plan C · Demo accounts <span>No Tide login required</span></summary>
+    <p role="status">Current identity: <strong>{loading ? "Loading…" : session?.identity.alias ?? "No account selected"}</strong>{session && <> · {session.identity.roles.join(", ")}</>}</p>
     <div className="simulation-controls">
       <label htmlFor="simulation-identity">Demo identity<select id="simulation-identity" value={selected} disabled={busy} onChange={event => setSelected(event.target.value)}>
+        <option value="" disabled>Choose a demo account</option>
         {accounts.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
       </select></label>
-      <button className="button button-secondary" disabled={busy} onClick={() => void switchAccount()}>{busy ? "Updating…" : "Switch simulated identity"}</button>
+      <button className="button button-secondary" disabled={busy || loading || !selected} onClick={() => void switchAccount()}>{busy ? "Updating…" : "Switch simulated identity"}</button>
       {canRelease && <button className="button button-secondary" disabled={busy} onClick={() => void release()}>Request invigilator release</button>}
       {session?.identity.roles.includes("app-admin") && <button className="button button-secondary" disabled={busy} onClick={() => void reset()}>Reset demo paper and votes</button>}
     </div>
     <p>Author: <Link href="/vault/new">seal a sample paper</Link>. Teacher or admin: attempt to open and see refusal. Invigilator: request release. <Link href="/governance">Governors 1 and 2</Link>: approve separately. Invigilator: open the paper.</p>
     <p className="fine-print">Sign-in, record policies and quorum checks are simulated locally. AES-GCM runs in the browser, but the local server holds the demo keys. This demonstrates the workflow; it does not provide Tide’s distributed protection.</p>
-    <p role="status">{message}</p>
+    {error && <p role="alert">{error}</p>}<p role="status">{message}</p>
   </details>;
 }

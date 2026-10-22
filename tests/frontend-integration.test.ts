@@ -3,7 +3,7 @@ import { after, afterEach, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import type { Exam, SessionResponse, SignedPolicyRef, Role } from "../src/lib/contracts";
-import { api, ClientApiError, mutation } from "../src/lib/client/api";
+import { advanceClientSession, api, ClientApiError, mutation } from "../src/lib/client/api";
 import { resumableExam, scheduleInput } from "../src/lib/client/exams";
 import { configureBrowserTide, getBrowserTide, type BrowserTideAdapter } from "../src/lib/tide/browser/adapter";
 import { handleApi } from "../src/lib/server/api";
@@ -68,5 +68,26 @@ test("401 invalidates the browser session; a role-based 403 does not", async () 
     expired = true;
     await assert.rejects(api("/api/session"), (e: unknown) => e instanceof ClientApiError && e.status === 401);
     assert.equal(invalidations, 1);
+  } finally { if (original) Object.defineProperty(globalThis, "window", original); else Reflect.deleteProperty(globalThis, "window"); }
+});
+
+test("a delayed 401 from the previous account cannot clear the newly selected author", async () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, "window"), events = new EventTarget();
+  let invalidations = 0, complete!: (response: Response) => void;
+  events.addEventListener("vault:session-invalidated", () => { invalidations++; });
+  Object.defineProperty(globalThis, "window", { configurable: true, value: events });
+  configureBrowserTide({ ...adapter, secureFetch: () => new Promise<Response>(resolve => { complete = resolve; }) });
+  try {
+    const stale = assert.rejects(api("/api/session"), (e: unknown) => e instanceof ClientApiError && e.status === 401);
+    advanceClientSession();
+    complete(Response.json({ error: { code: "EXPIRED", message: "Old account expired" } }, { status: 401 }));
+    await stale;
+    assert.equal(invalidations, 0);
+    configureBrowserTide(adapter);
+    const author = await api<SessionResponse>("/api/session");
+    assert.equal(author.identity.subject, "author");
+    expired = true;
+    await assert.rejects(api("/api/session"), (e: unknown) => e instanceof ClientApiError && e.status === 401);
+    assert.equal(invalidations, 1, "a current-session 401 must still invalidate access");
   } finally { if (original) Object.defineProperty(globalThis, "window", original); else Reflect.deleteProperty(globalThis, "window"); }
 });

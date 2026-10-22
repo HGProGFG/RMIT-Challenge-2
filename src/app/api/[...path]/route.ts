@@ -1,9 +1,7 @@
-import { handleApi } from "@/lib/server/api";
-import { simulationEnabled } from "@/lib/simulation/mode";
 import { handleSimulationApi } from "@/lib/simulation/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const dispatch = (req: Request) => simulationEnabled() ? handleSimulationApi(req) : handleApi(req);
+const dispatch = handleSimulationApi;
 export const GET = dispatch;
 export const POST = dispatch;
 export const PUT = dispatch;

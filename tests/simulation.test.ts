@@ -17,6 +17,10 @@ after(() => { closeSimulationDb(); rmSync(dir, { recursive: true, force: true })
 let cookie = "";
 async function call(path: string, method = "GET", body?: unknown, extra: Record<string, string> = {}) {
   const headers = new Headers({ Origin: "http://localhost:3000", Cookie: cookie, ...extra });
+  if (method !== "GET" && !headers.has("x-sealed-demo-csrf")) {
+    const bootstrap = await handleSimulationApi(new Request("http://localhost:3000/api/simulation/bootstrap"));
+    if (bootstrap.ok) headers.set("X-Sealed-Demo-CSRF", (await bootstrap.json()).data.csrfToken);
+  }
   if (body !== undefined) headers.set("Content-Type", "application/json");
   const response = await handleSimulationApi(new Request(`http://localhost:3000${path}`, { method, headers,
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }));
@@ -30,14 +34,19 @@ async function data<T>(path: string, method = "GET", body?: unknown): Promise<T>
 }
 async function login(participant: string) { await data("/api/simulation/login", "POST", { participant }); }
 
-test("simulation is explicit, loopback-only and uses separate authenticated local sessions", async () => {
+test("Plan C is the default, loopback-only and uses separate authenticated local sessions", async () => {
   assert.equal((await call("/api/session")).status, 401);
   process.env.TIDE_SIMULATION = "false";
-  assert.equal((await call("/api/simulation/login", "POST", { participant: "author" })).status, 404);
+  assert.equal(simulationEnabled(), true);
   process.env.TIDE_SIMULATION = "true"; process.env.APP_ORIGIN = "https://public.example";
   assert.equal(simulationEnabled(), false);
   process.env.APP_ORIGIN = "http://localhost:3000";
-  assert.equal((await call("/api/simulation/login", "POST", { participant: "author" }, { Origin: "https://evil.example" })).status, 403);
+  const untrusted = await handleSimulationApi(new Request("http://localhost:3000/api/simulation/login", { method: "POST", headers: { Origin: "https://evil.example", "Content-Type": "application/json" }, body: JSON.stringify({ participant: "author" }) }));
+  assert.equal(untrusted.status, 403);
+  assert.equal(untrusted.headers.has("Access-Control-Allow-Origin"), false);
+  assert.equal((await call("/api/simulation/login", "POST", { participant: "author" }, { "x-sealed-demo-csrf": "forged" })).status, 403);
+  const embedded = await call("/api/simulation/login", "POST", { participant: "author" }, { Origin: "null", "Sec-Fetch-Site": "cross-site" });
+  assert.equal(embedded.status, 200, "a bootstrapped embedded preview must be able to select the author");
   assert.equal((await call("/api/simulation/login", "POST", { participant: "super-admin" })).status, 422);
   const response = await call("/api/simulation/login", "POST", { participant: "teacher" });
   assert.match(response.headers.get("set-cookie")!, /HttpOnly; SameSite=Strict/);
@@ -53,7 +62,7 @@ test("local browser crypto + server simulation completes sealing, denials, disti
   Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { origin: "http://localhost:3000" } } });
   globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
     const request = new Request(String(url), init), headers = new Headers(request.headers);
-    headers.set("Origin", "http://localhost:3000"); headers.set("Cookie", cookie);
+    headers.set("Origin", "null"); headers.set("Sec-Fetch-Site", "cross-site"); headers.set("Cookie", cookie);
     const response = await handleSimulationApi(new Request(request, { headers }));
     if (response.headers.has("set-cookie")) cookie = response.headers.get("set-cookie")!.split(";")[0];
     return response;

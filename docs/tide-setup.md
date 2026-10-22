@@ -1,5 +1,9 @@
 # Tide integration handoff — Dinh
 
+> Historical integration notes. The current application runs Plan C only. Its real Tide provider,
+> policy-signing screen and OAuth callback have been removed; these steps are not needed to use
+> the demo. Start with [the Plan C guide](simulation.md).
+
 ## Current state
 
 For the usable network-independent prototype, run `npm run demo` and follow the

@@ -12,6 +12,8 @@ import { simulationEnabled } from "./mode";
 
 export const SIMULATION_ISSUER = "http://simulation.local/realms/sealed-demo";
 const COOKIE = "sealed_simulation", sessionMs = 8 * 60 * 60 * 1000;
+// Only same-origin readers can obtain this nonce: the API never enables CORS.
+const csrfToken = randomBytes(32).toString("base64url");
 const participants = ["author", "invigilator", "teacher", "app-admin", "governor-1", "governor-2", "governor-3"] as const;
 type Participant = typeof participants[number];
 type RecordData = { exam: Exam; policies: { WRITE: SignedPolicy; READ: SignedPolicy }; key: string; ciphertext?: string };
@@ -95,11 +97,13 @@ export async function handleSimulationApi(req: Request): Promise<Response> {
   let response: Response;
   try {
     if (!simulationEnabled() || new URL(req.url).origin !== appOrigin()) throw new AppError(404, "NOT_FOUND", "Route not found.");
-    if (req.headers.get("sec-fetch-site") === "cross-site" ||
-      (req.method !== "GET" && req.headers.get("origin") !== appOrigin())) throw new AppError(403, "ORIGIN_REJECTED", "Use the local application origin.");
+    if (req.method !== "GET" && req.headers.get("x-sealed-demo-csrf") !== csrfToken)
+      throw new AppError(403, "DEMO_REQUEST_REJECTED", "Reload the Plan C demo and try again.");
     const input = req.method === "GET" ? undefined : await readBody(req, z.unknown(), 120 * 1024);
     const db = store();
-    if (path === "/api/simulation/login" && req.method === "POST") {
+    if (path === "/api/simulation/bootstrap" && req.method === "GET") {
+      response = json({ csrfToken, simulation: true }, correlationId);
+    } else if (path === "/api/simulation/login" && req.method === "POST") {
       const { participant } = z.object({ participant: z.enum(participants) }).strict().parse(input);
       const value = randomBytes(32).toString("base64url");
       db.prepare("DELETE FROM SimulationSession WHERE tokenHash=? OR expiresAt<=?").run(hash(token(req)), Date.now());

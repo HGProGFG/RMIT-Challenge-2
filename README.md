@@ -20,7 +20,7 @@ Exam authors, invigilators and institutions benefit from narrower access. An ope
 
 ### 4. Why TideCloak matters
 
-Tide's MCP maps this to RelationshipAttestation:1: a separate author write policy and named invigilator read policy, with governed release. The live SDK, token/DPoP verification and policy adapters are implemented. While realm initialization is blocked, an explicit local simulator demonstrates sign-in, fixed roles, record access and two-of-three approval.
+Tide's MCP maps the intended integration to RelationshipAttestation:1: separate author write and invigilator read policies, with governed release. This submission uses the challenge's Plan C: selectable demo accounts, fixed roles, record access and two-of-three simulated approval. Its application runtime makes no Tide login, licensing or ORK calls.
 
 ### 5. Prototype & storytelling
 
@@ -35,9 +35,9 @@ npm ci
 npm run demo
 ```
 
-Open [localhost:3000](http://localhost:3000). Use the **Local simulation controls** to switch among seven synthetic identities. No Tide account, license key or active realm is needed for this mode. The server binds to loopback and stores demo state separately in `data/simulation.sqlite`.
+Open [localhost:3000](http://localhost:3000). In **Plan C · Demo accounts**, choose **Exam author** and click **Switch simulated identity**. Check **Current identity** before creating a paper. There are seven synthetic accounts and no Tide login, password, license or realm is needed. The server binds to loopback and stores demo state in `data/simulation.sqlite`.
 
-Follow the [simulation guide and Tide integration plan](docs/simulation.md) for the complete demo. To use the live integration, configure `.env.local`, leave `TIDE_SIMULATION=false`, and run `npm run dev`. Live operations remain blocked until the realm and its acceptance checks are ready.
+Follow the [Plan C guide and future Tide integration plan](docs/simulation.md) for the complete demo. `npm run dev` also starts Plan C. The previous live provider, policy-signing screen and OAuth callback have been removed from the runtime. Earlier adapters and tests remain as reference for future integration; there is no switch to a live mode in this build.
 
 - [Backend setup and authentication boundary](docs/backend-setup.md)
 - [Frontend setup and browser adapter handoff](docs/frontend-setup.md)
@@ -47,7 +47,7 @@ Follow the [simulation guide and Tide integration plan](docs/simulation.md) for 
 - [Backend validation boundaries](docs/evidence/backend-validation.md)
 - [Full build specification](WEB_BUILD_SPEC.md)
 
-Copy `.env.example` to `.env.local` only when configuring the live environment. Never commit credentials, tokens, private keys or plaintext papers. Follow real license, terms, hosting and independent-account setup before creating a realm.
+No `.env.local` is required for Plan C. Use only synthetic papers. Earlier setup documents describe the future live integration, not prerequisites for this prototype.
 
 ## Checks
 

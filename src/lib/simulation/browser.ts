@@ -7,7 +7,15 @@ class SimulationError extends Error { constructor(public status: number, public 
 async function request(path: string, init?: RequestInit) {
   const url = new URL(path, window.location.origin);
   if (url.origin !== window.location.origin || !url.pathname.startsWith("/api/") || url.username || url.password) throw new Error("INVALID_API_TARGET");
-  return fetch(url, { ...init, credentials: "same-origin", cache: "no-store", redirect: "error" });
+  const headers = new Headers(init?.headers);
+  if (init?.method && !["GET", "HEAD"].includes(init.method.toUpperCase())) {
+    const bootstrap = await fetch(new URL("/api/simulation/bootstrap", window.location.origin), { credentials: "same-origin", cache: "no-store", redirect: "error" });
+    if (!bootstrap.ok) throw new Error("SIMULATION_BOOTSTRAP_UNAVAILABLE");
+    const value = (await bootstrap.json()).data;
+    if (value?.simulation !== true || typeof value.csrfToken !== "string") throw new Error("SIMULATION_BOOTSTRAP_INVALID");
+    headers.set("X-Sealed-Demo-CSRF", value.csrfToken);
+  }
+  return fetch(url, { ...init, headers, credentials: "same-origin", cache: "no-store", redirect: "error" });
 }
 async function post<T>(path: string, body: unknown): Promise<T> {
   const response = await request(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });

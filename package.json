@@ -8,9 +8,9 @@
   },
   "scripts": {
     "demo": "node scripts/local-demo.mjs",
-    "dev": "next dev --webpack",
+    "dev": "node scripts/local-demo.mjs",
     "build": "next build --webpack",
-    "start": "next start",
+    "start": "next start --hostname 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "db:migrate": "tsx scripts/migrate.ts",
