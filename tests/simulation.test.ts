@@ -57,6 +57,59 @@ test("Plan C is the default, loopback-only and uses separate authenticated local
   cookie = valid;
 });
 
+test("creating additional exams preserves old papers and requires separate release approvals", async () => {
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window"), originalFetch = globalThis.fetch;
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { origin: "http://localhost:3000" } } });
+  globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+    const request = new Request(String(url), init), headers = new Headers(request.headers);
+    headers.set("Cookie", cookie);
+    const response = await handleSimulationApi(new Request(request, { headers }));
+    if (response.headers.has("set-cookie")) cookie = response.headers.get("set-cookie")!.split(";")[0];
+    return response;
+  }) as typeof fetch;
+  try {
+    const adapter = createSimulationAdapter();
+    await adapter.login("author");
+    const before = await data<{ exams: Exam[] }>("/api/exams");
+    const created: { exam: Exam; read: SignedPolicy; ciphertext: string; plaintext: string }[] = [];
+    for (const title of ["Additional synthetic exam A", "Additional synthetic exam B"]) {
+      const { exam } = await data<{ exam: Exam }>("/api/exams/prepare", "POST", { title, advisoryReleaseAt: "2026-10-23T02:00:00Z" });
+      const write = (await data<{ policy: SignedPolicy }>(`/api/exams/${exam.id}/policy?purpose=WRITE`)).policy;
+      const read = (await data<{ policy: SignedPolicy }>(`/api/exams/${exam.id}/policy?purpose=READ`)).policy;
+      const plaintext = `SYNTHETIC CONTENT: ${title}`;
+      const ciphertext = await adapter.encrypt({ examId: exam.id, plaintext, policy: write });
+      await data(`/api/exams/${exam.id}/seal`, "POST", { ciphertextBase64: ciphertext, writePolicyId: write.id, expectedVersion: 1, contentType: "text/plain;charset=utf-8" });
+      created.push({ exam, read, ciphertext, plaintext });
+    }
+    const after = await data<{ exams: Exam[] }>("/api/exams");
+    assert.equal(after.exams.length, before.exams.length + 2);
+    assert.deepEqual(after.exams.slice(0, before.exams.length), before.exams);
+    assert.notEqual(created[0].exam.id, created[1].exam.id);
+    await adapter.login("invigilator");
+    const open = (item: typeof created[number]) => adapter.decrypt({ examId: item.exam.id, ciphertextBase64: item.ciphertext, policy: item.read });
+    assert.equal((await open(created[0])).status, "denied");
+    assert.equal((await open(created[1])).status, "denied");
+    const release = await data<{ observation: GovernanceObservation }>(`/api/exams/${created[0].exam.id}/access-requests`, "POST", { kind: "INVIGILATOR_RELEASE" });
+    const id = release.observation.changeRequestIds[0];
+    for (const governor of ["governor-1", "governor-2"]) {
+      await adapter.login("tide-realm-admin", governor);
+      await data(`/api/governance/requests/${id}/approve`, "POST", { changeRequestId: id });
+    }
+    const requests = await data<{ requests: { examId: string; examTitle: string }[] }>("/api/governance/requests");
+    assert.equal(requests.requests.find(r => r.examId === created[0].exam.id)?.examTitle, created[0].exam.title);
+    await adapter.login("invigilator");
+    assert.deepEqual(await open(created[0]), { status: "opened", plaintext: created[0].plaintext });
+    assert.equal((await open(created[1])).status, "denied", "approving one paper must not release the next paper");
+    for (const old of before.exams) {
+      assert.deepEqual((await data<{ exam: Exam }>(`/api/exams/${old.id}`)).exam, old);
+    }
+    await adapter.logout();
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow); else Reflect.deleteProperty(globalThis, "window");
+  }
+});
+
 test("local browser crypto + server simulation completes sealing, denials, distinct votes and opening", async () => {
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window"), originalFetch = globalThis.fetch;
   Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { origin: "http://localhost:3000" } } });
