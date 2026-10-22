@@ -17,14 +17,14 @@ The API requires an HTTP loopback `APP_ORIGIN`. Before a mutation the adapter re
 
 ## Demo journey
 
-1. In **Plan C · Demo accounts**, select **Exam author**, then **Switch simulated identity**. Confirm **Current identity: Simulated author**. Open **New exam**, enter a title, click **Use sample text**, confirm synthetic content, then **Encrypt and seal**. If no author is active, the page shows **Use Exam author** and disables sealing. One exam is supported per demo run.
+1. In **Plan C · Demo accounts**, select **Exam author**, then **Switch simulated identity**. Confirm **Current identity: Simulated author**. Open **New exam**, enter a title, click **Use sample text**, confirm synthetic content, then **Encrypt and seal**. If no author is active, the page shows **Use Exam author** and disables sealing. You can create multiple papers: **New exam** always starts a fresh form, and **Create another exam** starts the next paper after sealing. Existing papers and their approvals are preserved.
 2. Switch to **Teacher**. Open the exam and click **Attempt to open**. The local policy refuses access. Repeat as **Application administrator**.
 3. As the administrator, open **Admin attack panel**. Inspect the stored ciphertext, change the display role and request self-access. A display label changes no authority; the fixed recipient policy refuses an administrator self-grant. A governor can reject that request.
-4. Switch to **Invigilator**. Opening is still refused. Click **Request invigilator release**, then open **Governance**.
+4. Switch to **Invigilator**. Opening is still refused. Choose the paper in **Release exam**, then click **Request invigilator release** and open **Governance**. From a paper's detail page, the request is pinned to that paper. Each governance row shows its paper title so governors can approve the correct request.
 5. Switch to **Governor 1** and click **Simulate approval** for the invigilator request. It stays pending at one approval. That same account cannot vote twice.
 6. Switch to **Governor 2** and approve the same request. It commits at two distinct governor accounts. Governor 3 is available as the alternative second approver.
 7. Switch back to **Invigilator**, open the exam and click **Attempt to open**. The browser displays the original synthetic paper. Teacher, administrator and author remain unable to open it through the simulated read grant.
-8. Open **Activity** to inspect labeled local events. To repeat from a clean run, switch to **Application administrator** and click **Reset demo paper and votes**. This deletes the simulation paper, keys and votes, without touching live data.
+8. Open **Activity** to inspect labeled local events. To delete all demo papers and start a clean run, switch to **Application administrator** and click **Reset all demo papers and votes**. This deletes all simulation papers, keys and votes, without touching live data. Reset is not required to create another paper. Approving one paper never releases another.
 
 Switching identities clears any displayed plaintext. Sessions expire after eight hours; signing out revokes the local session. The scheduled release is advisory and never automatically releases a paper.
 

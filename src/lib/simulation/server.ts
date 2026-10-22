@@ -148,7 +148,6 @@ function route(state: State, actor: VerifiedIdentity, req: Request, path: string
   if (path === "/api/exams/prepare" && method === "POST") {
     requireRole(actor, "author"); const data = prepareSchema.parse(input);
     return ok(once(state, actor, req, data, () => {
-      if (state.records.length) throw new AppError(409, "EXAM_EXISTS", "This demo run already has an exam. Reset it from the simulation panel to start again.");
       const id = randomUUID(), exam: Exam = { id, runId: state.runId, title: data.title, authorIssuer: actor.issuer,
         authorSubject: actor.subject, authorAlias: actor.alias, advisoryReleaseAt: data.advisoryReleaseAt, createdAt: new Date().toISOString(),
         sealedAt: null, contentType: "text/plain;charset=utf-8", state: "PREPARED", ciphertextSha256: null, byteLength: null, version: 1 };
@@ -219,7 +218,7 @@ function route(state: State, actor: VerifiedIdentity, req: Request, path: string
   }
   if (path === "/api/governance/requests" && method === "GET") {
     requireRole(actor, "app-admin", "tide-realm-admin", "invigilator");
-    return ok({ requests: state.requests.map(link), authority: "SIMULATION: local server state; no ORK votes" });
+    return ok({ requests: state.requests.map(request => ({ ...link(request), examTitle: record(state, request.examId).exam.title })), authority: "SIMULATION: local server state; no ORK votes" });
   }
   const decision = /^\/api\/governance\/requests\/([^/]+)\/(approve|deny)$/.exec(path);
   if (decision && method === "POST") {

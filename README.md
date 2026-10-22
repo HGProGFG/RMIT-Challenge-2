@@ -37,6 +37,8 @@ npm run demo
 
 Open [localhost:3000](http://localhost:3000). In **Plan C · Demo accounts**, choose **Exam author** and click **Switch simulated identity**. Check **Current identity** before creating a paper. There are seven synthetic accounts and no Tide login, password, license or realm is needed. The server binds to loopback and stores demo state in `data/simulation.sqlite`.
 
+Create as many demo papers as needed without resetting the vault. Each paper keeps its own key, policies and release approvals. Use **Release exam** to choose the paper before requesting access; governance requests display its title.
+
 Follow the [Plan C guide and future Tide integration plan](docs/simulation.md) for the complete demo. `npm run dev` also starts Plan C. The previous live provider, policy-signing screen and OAuth callback have been removed from the runtime. Earlier adapters and tests remain as reference for future integration; there is no switch to a live mode in this build.
 
 - [Backend setup and authentication boundary](docs/backend-setup.md)
